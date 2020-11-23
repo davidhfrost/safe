@@ -11,10 +11,10 @@
 
 package kr.ac.kaist.safe.nodes.ast
 
-import java.lang.Double
 import java.math.BigInteger
 import kr.ac.kaist.safe.util.{ NodeUtil => NU }
 import kr.ac.kaist.safe.LINE_SEP
+import java.lang.Double
 
 trait Expr extends ASTNode {
   def isEval: Boolean = this match {
@@ -184,7 +184,7 @@ trait NumberLiteral extends Literal
 case class DoubleLiteral(
     info: ASTNodeInfo,
     text: String,
-    num: Double
+    num: java.lang.Double
 ) extends NumberLiteral {
   override def toString(indent: Int): String = {
     val s: StringBuilder = new StringBuilder

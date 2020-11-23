@@ -35,7 +35,9 @@ object Initialize {
         Model.parseDir(NodeUtil.jsModelsBase)
       }
       model.funcs.foreach {
-        case (_, func) => cfg.addJSModel(func)
+        case (_, func) => {
+          cfg.addJSModel(func)
+        }
       }
       AbsHeap(model.heap)
     }

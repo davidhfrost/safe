@@ -15,6 +15,7 @@ import kr.ac.kaist.safe.errors.error.SafeError
 import kr.ac.kaist.safe.errors.warning.SafeWarning
 import kr.ac.kaist.safe.LINE_SEP
 
+// exception log
 class ExcLog(es: List[SafeError] = Nil, ws: List[SafeWarning] = Nil) {
   private var errs: List[SafeError] = es
   private var warns: List[SafeWarning] = ws

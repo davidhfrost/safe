@@ -36,11 +36,16 @@ case class Semantics(
     worklist.init(entryCP)
   }
 
+  // exception log
   lazy val excLog: ExcLog = new ExcLog
 
+  // abstract boolean
   private val AB = AbsBool.Bot
 
+  // call control point to CallInfo
+  // Call -> TracePartition -> CallInfo
   private val ccpToCallInfo: MMap[Call, MMap[TracePartition, CallInfo]] = MMap()
+
   def setCallInfo(call: Call, tp: TracePartition, info: CallInfo): Unit = {
     val map = ccpToCallInfo.getOrElse(call, {
       val newMap = MMap[TracePartition, CallInfo]()
@@ -57,13 +62,16 @@ case class Semantics(
   }
 
   // control point maps to state
+  // CFGBlock -> TracePartition -> AbsState
   private val cpToState: MMap[CFGBlock, MMap[TracePartition, AbsState]] = MMap()
+
   def getState(block: CFGBlock): Map[TracePartition, AbsState] =
     cpToState.getOrElse(block, {
       val newMap = MMap[TracePartition, AbsState]()
       cpToState(block) = newMap
       newMap
     }).foldLeft(Map[TracePartition, AbsState]())(_ + _)
+
   def getState(cp: ControlPoint): AbsState = {
     val block = cp.block
     val tp = cp.tracePartition
