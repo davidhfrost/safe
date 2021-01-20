@@ -62,7 +62,10 @@ case object Analyze extends PhaseObj[(CFG, Semantics, TracePartition, HeapBuildC
     })
 
     // dump exit state
-    if (config.exitDump) {
+    if (config.exitDumpAll) {
+      var state = sem.getState(exitCP)
+      println(state.toStringAll)
+    } else if (config.exitDump) {
       val state = sem.getState(exitCP)
       println(state.toString)
     }
@@ -82,6 +85,8 @@ case object Analyze extends PhaseObj[(CFG, Semantics, TracePartition, HeapBuildC
       "log duration time for each function."),
     ("exitDump", BoolOption(c => c.exitDump = true),
       "dump the state of the exit state of a given CFG"),
+    ("exitDumpAll", BoolOption(c => c.exitDumpAll = true),
+      "dump the full exit state of a given CFG, including non-user heap locations"),
     ("out", StrOption((c, s) => c.outFile = Some(s)),
       "the analysis results will be written to the outfile."),
     ("html", StrOption((c, s) => c.htmlName = Some(s)),
@@ -96,6 +101,7 @@ case class AnalyzeConfig(
   var time: Boolean = false,
   var timeLog: Boolean = false,
   var exitDump: Boolean = false,
+  var exitDumpAll: Boolean = false,
   var outFile: Option[String] = None,
   var htmlName: Option[String] = None
 ) extends Config

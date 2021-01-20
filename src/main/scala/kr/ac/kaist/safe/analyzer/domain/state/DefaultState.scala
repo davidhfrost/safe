@@ -11,6 +11,7 @@
 
 package kr.ac.kaist.safe.analyzer.domain
 
+import kr.ac.kaist.safe
 import kr.ac.kaist.safe.LINE_SEP
 import kr.ac.kaist.safe.analyzer.CallInfo
 import kr.ac.kaist.safe.analyzer.model._

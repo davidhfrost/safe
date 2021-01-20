@@ -156,38 +156,39 @@ trait ModelParser extends JavaTokenParsers with RegexParsers {
 
   // JavaScript function
   val jsFun: Parser[List[(String, CFGFunction)]] = """[\\""" ~> """[^\\]*""".r <~ """\\]""" ^^ {
-    case fun => JSParser.stringToAST(fun) match {
-      case Succ((pgm, log)) => {
-        if (log.hasError) println(log)
-        val safeConfig = SafeConfig(CmdCFGBuild, silent = true)
+    case fun =>
+      JSParser.stringToAST(fun) match {
+        case Succ((pgm, log)) => {
+          if (log.hasError) println(log)
+          val safeConfig = SafeConfig(CmdCFGBuild, silent = true)
 
-        // rewrite AST
-        val astRewriteConfig = ASTRewriteConfig()
-        val rPgm = ASTRewrite(pgm, safeConfig, astRewriteConfig).get
+          // rewrite AST
+          val astRewriteConfig = ASTRewriteConfig()
+          val rPgm = ASTRewrite(pgm, safeConfig, astRewriteConfig).get
 
-        // translate
-        val translateConfig = TranslateConfig()
-        val ir = Translate(rPgm, safeConfig, translateConfig).get
+          // translate
+          val translateConfig = TranslateConfig()
+          val ir = Translate(rPgm, safeConfig, translateConfig).get
 
-        // cfg build
-        val cfgBuildConfig = CFGBuildConfig()
-        val funCFG = CFGBuild(ir, safeConfig, cfgBuildConfig).get
+          // cfg build
+          val cfgBuildConfig = CFGBuildConfig()
+          val funCFG = CFGBuild(ir, safeConfig, cfgBuildConfig).get
 
-        // add fun cfgs
-        val funcs = funCFG.getUserFuncs
-        val result = funcs.filter(_.id != 0).foldLeft(List[(String, CFGFunction)]()) {
-          case (lst, func) =>
-            // TODO: map func to corresponding fun substring
-            (fun, func) :: lst
+          // add fun cfgs
+          val funcs = funCFG.getUserFuncs
+          val result = funcs.filter(_.id != 0).foldLeft(List[(String, CFGFunction)]()) {
+            case (lst, func) =>
+              // TODO: map func to corresponding fun substring
+              (fun, func) :: lst
+          }
+
+          Succ(result)
         }
-
-        Succ(result)
+        case Fail(e) => {
+          println(ModelParseError(e.toString))
+          Fail(e)
+        }
       }
-      case Fail(e) => {
-        println(ModelParseError(e.toString))
-        Fail(e)
-      }
-    }
   } ^? { case Succ(pgm) => pgm }
   val jsFuncs: Parser[(List[(String, CFGFunction)], Map[Int, Int])] = "{" ~> (
     repsep((int <~ ":") ~ jsFun, ",")

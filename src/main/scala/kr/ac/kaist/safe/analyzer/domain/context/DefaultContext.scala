@@ -237,7 +237,8 @@ object DefaultContext extends ContextDomain {
       val s = new StringBuilder
       val keyStr = loc.toString + " -> "
       s.append(keyStr)
-      Useful.indentation(s, env.toString, keyStr.length)
+      //Useful.indentation(s, env.toString, keyStr.length)
+      Useful.indentation(s, env.toString, 4)
       s.toString
     }
 

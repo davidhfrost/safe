@@ -21,6 +21,10 @@ import kr.ac.kaist.safe.util._
 ////////////////////////////////////////////////////////////////////////////////
 // object abstract domain with concrete keys
 ////////////////////////////////////////////////////////////////////////////////
+
+// `imap`: map of internal properties
+// `nmap`: map of normal properties (anything that's not internal)
+
 object CKeyObject extends ObjDomain {
   val NMap = PMapDomain[String, DataProp, AbsDataProp.type](AbsDataProp)
   type NMap = NMap.Elem

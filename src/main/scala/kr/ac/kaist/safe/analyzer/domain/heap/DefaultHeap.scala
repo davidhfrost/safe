@@ -186,7 +186,8 @@ object DefaultHeap extends HeapDomain {
       val s = new StringBuilder
       val keyStr = loc.toString + (if (con) " -> " else " => ")
       s.append(keyStr)
-      Useful.indentation(s, obj.toString, keyStr.length)
+      //Useful.indentation(s, obj.toString, keyStr.length)
+      Useful.indentation(s, obj.toString, 4)
       s.toString
     }
 

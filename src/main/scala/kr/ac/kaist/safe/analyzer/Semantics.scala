@@ -18,9 +18,10 @@ import kr.ac.kaist.safe.analyzer.domain._
 import kr.ac.kaist.safe.analyzer.model._
 import kr.ac.kaist.safe.nodes.ir._
 import kr.ac.kaist.safe.nodes.cfg._
-import kr.ac.kaist.safe.util.{ NodeUtil, EJSNumber, EJSString, EJSBool, EJSNull, EJSUndef, AllocSite, Recency, Recent, Old }
+import kr.ac.kaist.safe.util.{AllocSite, EJSBool, EJSNull, EJSNumber, EJSString, EJSUndef, NodeUtil, Old, PredAllocSite, Recency, Recent, UserAllocSite}
 import kr.ac.kaist.safe.LINE_SEP
-import scala.collection.mutable.{ Map => MMap }
+
+import scala.collection.mutable.{Map => MMap}
 
 case class Semantics(
     cfg: CFG,
@@ -504,6 +505,25 @@ case class Semantics(
   ): (AbsState, AbsState) = {
     val tp = cp.tracePartition
     (name, args, loc) match {
+      case (NodeUtil.INTERNAL_REACT_RENDER, List(element, container), None) => {
+        val (objV, excSet1) = V(element, st)
+        Console.println(objV)
+        Console.println(objV.locset.value)
+        Console.println(st.heap.get(objV.locset))
+        (st, excSt)
+      }
+
+      case (NodeUtil.INTERNAL_REACT_GET, List(addr), None) => {
+        val (addrVal, excSet1) = V(addr, st)
+        val allocSite = PredAllocSite("ReactAddress" + TypeConversionHelper.ToString(addrVal))
+        var loc = Loc(allocSite, tp)
+        var obj = st.heap.get(loc)
+
+        val newSt = st.varStore(lhs, AbsValue(loc))
+        (newSt, excSt)
+      }
+
+
       case (NodeUtil.INTERNAL_PRINT, List(expr), None) => {
         val (v, excSet) = V(expr, st)
         println(s"[DEBUG] $cp")

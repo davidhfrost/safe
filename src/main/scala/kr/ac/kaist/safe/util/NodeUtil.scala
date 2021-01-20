@@ -168,7 +168,14 @@ object NodeUtil {
   val INTERNAL_ADD_EVENT_FUNC = internalAPIName("addEventFunc")
   val INTERNAL_GET_LOC = internalAPIName("getLoc")
   val INTERNAL_HAS_CONST = internalAPIName("HasConstruct")
+
+  val INTERNAL_REACT_RENDER = internalAPIName("ReactRender")
+  val INTERNAL_REACT_GET = internalAPIName("ReactGet")
+
   val internalCallSet: Set[String] = Set(
+    INTERNAL_REACT_RENDER,
+    INTERNAL_REACT_GET,
+
     INTERNAL_PRINT,
     INTERNAL_NOT_YET_IMPLEMENTED,
     INTERNAL_CHAR_CODE,
