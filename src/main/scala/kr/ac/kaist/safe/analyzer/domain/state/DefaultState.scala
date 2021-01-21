@@ -14,6 +14,7 @@ package kr.ac.kaist.safe.analyzer.domain
 import kr.ac.kaist.safe
 import kr.ac.kaist.safe.LINE_SEP
 import kr.ac.kaist.safe.analyzer.CallInfo
+import kr.ac.kaist.safe.analyzer.domain.react.ReactState
 import kr.ac.kaist.safe.analyzer.model._
 import kr.ac.kaist.safe.nodes.cfg._
 import kr.ac.kaist.safe.util.PipeOps._

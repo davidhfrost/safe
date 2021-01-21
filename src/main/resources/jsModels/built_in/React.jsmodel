@@ -29,19 +29,12 @@ Heap: {
 
   #ReactDOM: {
     "render": <#ReactDOM.render, F, F, F>,
-    "recursiveRender": <#ReactDOM.recursiveRender, F, F, F>
   },
   #ReactDOM.render: {
     [[Class]]: "Function",
     [[Prototype]]: #Function.prototype,
     [[Call]]: fun(2),
     "length": <2.0, F, F, F>
-  },
-  #ReactDOM.recursiveRender: {
-    [[Class]]: "Function",
-    [[Prototype]]: #Function.prototype,
-    [[Call]]: fun(3),
-    "length": <1, F, F, F>
   },
 
 
@@ -80,48 +73,7 @@ Function: {
   \\],
   2: [\\
   function render(element, container) {
-    var renderedElement = ReactDOM.recursiveRender(element);
-    return renderedElement;
-  }
-  \\],
-  3: [\\
-  function recursiveRender(element) {
-    var renderedElement;
-
-    // HTML element component
-    if (typeof element.type === "string") {
-      // recursively render children into an array
-      var children = [];
-
-      for (var i = 0; i < element.props.children.length; i++) {
-        var child = element.props.children[i];
-        if (typeof child === 'string') {
-          children[i] = child;
-        } else {
-          children[i] = ReactDOM.render(child);
-        }
-      }
-
-      renderedElement = {
-        type: element.type,
-        props: { children: children },
-      };
-    }
-    // class component
-    else if (element.type.prototype.__class__) {
-      var instance = new element.type();
-      instance.props = element.props;
-      var rendered = ReactDOM.render(instance.render());
-      rendered.instance = instance;
-      renderedElement = rendered;
-    }
-    // function component
-    else {
-      renderedElement = ReactDOM.render(element.type(element.props));
-    }
-
-    @ReactRender(renderedElement, '');
-    return renderedElement;
+    @ReactRender(element, container);
   }
   \\],
   4: [\\

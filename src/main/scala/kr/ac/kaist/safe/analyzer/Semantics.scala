@@ -20,6 +20,7 @@ import kr.ac.kaist.safe.nodes.ir._
 import kr.ac.kaist.safe.nodes.cfg._
 import kr.ac.kaist.safe.util.{AllocSite, EJSBool, EJSNull, EJSNumber, EJSString, EJSUndef, NodeUtil, Old, PredAllocSite, Recency, Recent, UserAllocSite}
 import kr.ac.kaist.safe.LINE_SEP
+import kr.ac.kaist.safe.analyzer.domain.react.{CompDesc, ReactHelper, ReactState}
 
 import scala.collection.mutable.{Map => MMap}
 
@@ -506,10 +507,10 @@ case class Semantics(
     val tp = cp.tracePartition
     (name, args, loc) match {
       case (NodeUtil.INTERNAL_REACT_RENDER, List(element, container), None) => {
-        val (objV, excSet1) = V(element, st)
-        Console.println(objV)
-        Console.println(objV.locset.value)
-        Console.println(st.heap.get(objV.locset))
+        val (elementValue, excSetO) = V(element, st)
+        val desc: CompDesc = ReactHelper.extractCompDesc(elementValue, st)
+        ReactState.mount(desc)
+        Console.println(ReactState.toString)
         (st, excSt)
       }
 

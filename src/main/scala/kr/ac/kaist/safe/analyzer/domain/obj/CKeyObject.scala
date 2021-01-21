@@ -71,7 +71,7 @@ object CKeyObject extends ObjDomain {
 
     override def toString: String = {
       val s = new StringBuilder
-      s.append("Internal Properties:").append(LINE_SEP)
+      s.append("\nInternal Properties:").append(LINE_SEP)
         .append(imap)
         .append("Normal Properties:").append(LINE_SEP)
         .append(nmap)
