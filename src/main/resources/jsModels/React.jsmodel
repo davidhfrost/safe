@@ -1,0 +1,479 @@
+Heap: {
+  #Global: {
+    "React": <#React, F, F, F>,
+    "ReactDOM": <#ReactDOM, F, F, F>,
+    "ReactState": <#ReactState, F, F, F>,
+
+    "CompDesc": <#CompDesc, F, F, F>,
+  },
+
+  #CompDesc: {
+    [[Class]]: "Function",
+    [[Construct]]: fun(22),
+    [[Extensible]]: true,
+    "prototype": <#CompDesc.prototype, F, F, F>,
+  },
+  #CompDesc.prototype: {
+    "toString": <#CompDesc.toString, F, F, F>,
+  },
+  #CompDesc.toString: {
+    [[Class]]: "Function",
+    [[Call]]: fun(23),
+  },
+
+  #MountedCompDesc: {
+    [[Class]]: "Function",
+    [[Construct]]: fun(24),
+    [[Extensible]]: true,
+    "prototype": <#MountedCompDesc.prototype, F, F, F>,
+  },
+  #MountedCompDesc.prototype: {
+    "toString": <#MountedCompDesc.toString, F, F, F>,
+  },
+  #MountedCompDesc.toString: {
+    [[Class]]: "Function",
+    [[Call]]: fun(25),
+  },
+
+  #React: {
+    "createElement": <#React.createElement, F, F, F>,
+    "Component": <#React.Component, F, F, F>,
+  },
+  #React.Component: {
+    [[Class]]: "Function",
+    [[Construct]]: fun(5),
+    [[Extensible]]: true,
+    "prototype": <#React.Component.prototype, F, F, F>,
+  },
+  #React.Component.prototype: {
+    "__class__": <true, F, F, F>,
+  },
+  #React.createElement: {
+    [[Class]]: "Function",
+    [[Prototype]]: #Function.prototype,
+    [[Call]]: fun(1),
+    "length": <2.0, F, F, F>,
+  },
+
+
+  #ReactDOM: {
+    "render": <#ReactDOM.render, F, F, F>,
+  },
+  #ReactDOM.render: {
+    [[Class]]: "Function",
+    [[Prototype]]: #Function.prototype,
+    [[Call]]: fun(2),
+    "length": <2.0, F, F, F>
+  },
+
+  #ReactState: {
+    [[Class]]: "Function",
+    [[Construct]]: fun(7),
+    "prototype": <#ReactState.prototype, F, F, F>,
+    "nextLoc": <0, T, T, T>,
+  },
+  #ReactState.prototype: {
+    "render": <#ReactState.render, F, F, F>,
+    "mount": <#ReactState.mount, F, F, F>,
+    "mountSeq": <#ReactState.mountSeq, F, F, F>,
+    "mounted": <#ReactState.mounted, F, F, F>,
+    "unmount": <#ReactState.unmount, F, F, F>,
+    "unmountSeq": <#ReactState.unmountSeq, F, F, F>,
+    "unmounted": <#ReactState.unmounted, F, F, F>,
+    "rerender": <#ReactState.rerender, F, F, F>,
+    "reconcile": <#ReactState.reconcile, F, F, F>,
+    "reconcileSeq": <#ReactState.reconcileSeq, F, F, F>,
+    "reconciled": <#ReactState.reconciled, F, F, F>,
+    "setState": <#ReactState.setState, F, F, F>,
+    "extractCompDesc": <#ReactState.extractCompDesc, F, F, F>,
+    "printState": <#ReactState.printState, F, F, F>,
+  },
+  #ReactState.render: {
+    [[Class]]: "Function",
+    [[Call]]: fun(8),
+  },
+  #ReactState.mount: {
+    [[Class]]: "Function",
+    [[Call]]: fun(9),
+  },
+  #ReactState.mountSeq: {
+    [[Class]]: "Function",
+    [[Call]]: fun(10),
+  },
+  #ReactState.mounted: {
+    [[Class]]: "Function",
+    [[Call]]: fun(11),
+  },
+  #ReactState.unmount: {
+    [[Class]]: "Function",
+    [[Call]]: fun(12),
+  },
+  #ReactState.unmountSeq: {
+    [[Class]]: "Function",
+    [[Call]]: fun(13),
+  },
+  #ReactState.unmounted: {
+    [[Class]]: "Function",
+    [[Call]]: fun(14),
+  },
+  #ReactState.rerender: {
+    [[Class]]: "Function",
+    [[Call]]: fun(15),
+  },
+  #ReactState.reconcile: {
+    [[Class]]: "Function",
+    [[Call]]: fun(16),
+  },
+  #ReactState.reconcileSeq: {
+    [[Class]]: "Function",
+    [[Call]]: fun(17),
+  },
+  #ReactState.reconciled: {
+    [[Class]]: "Function",
+    [[Call]]: fun(18),
+  },
+  #ReactState.setState: {
+    [[Class]]: "Function",
+    [[Call]]: fun(19),
+  },
+  #ReactState.extractComponentDesc: {
+    [[Class]]: "Function",
+    [[Call]]: fun(20),
+  },
+  #ReactState.printState: {
+    [[Class]]: "Function",
+    [[Call]]: fun(21),
+  },
+}
+
+Function: {
+  1: [\\
+  function createElement(type, props, children) {
+    if (props === null) props = {};
+
+    var childArray = [];
+
+    for (var i = 2; i < arguments.length; i++) {
+      var child = arguments[i];
+      if (child === null) continue;
+
+      if (Array.isArray(child)) {
+        for (var j = 0; j < child.length; j++) {
+          childArray.push(child[j]);
+        }
+      } else {
+        childArray.push(child);
+      }
+    }
+
+    props.children = childArray;
+
+    return { type: type, props: props };
+  }
+  \\],
+  2: [\\
+  function render(element, container) {
+    // HTML element component
+    if (typeof element.type === "string") {
+      // recursively render children into an array
+      var children = [];
+
+      for (var i = 0; i < element.props.children.length; i++) {
+        var child = element.props.children[i];
+        if (typeof child === 'string') {
+          children[i] = child;
+        } else {
+          children[i] = ReactDOM.render(child);
+        }
+      }
+
+      return {
+        type: element.type,
+        props: { children: children },
+      };
+    }
+    // function component
+    else if (!element.type.prototype.__class__) {
+      return ReactDOM.render(element.type(element.props));
+    }
+    // class component
+    else {
+      var instance = new element.type();
+      // ideally, this would create a shallow copy of `element.props`
+      instance.props = element.props;
+      var rendered = ReactDOM.render(instance.render());
+      rendered.instance = instance;
+      return rendered;
+    }
+  }
+  \\],
+
+  5: [\\
+  function Component() {
+    // React.Component constructor
+  }
+  \\],
+
+  7: [\\
+  function ReactState() {
+    this.heap = {};
+    this.shapeMap = {};
+    this.stateMap = {};
+  }
+  \\],
+
+  8: [\\
+  function render() {
+    if (comp.props.render !== undefined) {
+      var elt = comp.props.render(comp.props);
+      var desc = this.extractCompDesc(elt);
+      return desc.children;
+    } else {
+      return comp.children.slice(0);
+    }
+  }
+  \\],
+
+  9: [\\
+  function mount(comp) {
+    var nextLoc = ReactState.nextLoc++;
+    var mountedComp = new MountedCompDesc(comp, nextLoc);
+
+    this.stateMap[nextLoc] = {};
+    this.heap[nextLoc] = { props: comp.props };
+
+    return this.mounted(mountedComp, this.mountSeq(this.render(comp)))
+  }
+  \\],
+
+  10: [\\
+  function mountSeq(comps) {
+    if (comps.length === 0) return [];
+    var head = this.mount(comps.shift());
+    var tail = this.mountSeq(comps);
+    tail.unshift(head);
+    return tail;
+  }
+  \\],
+
+  11: [\\
+  function mounted(mountedComp, childLocs) {
+    this.shapeMap[mountedComp.loc] = {
+      mountedComp: mountedComp,
+      childLocs: childLocs,
+    };
+
+    return mountedComp.loc
+  }
+  \\],
+
+  12: [\\
+  function unmount(loc) {
+    var mountedComp = this.shapeMap[loc];
+
+    if (mountedComp === undefined) {
+      return null;
+    } else {
+      this.unmountSeq(mountedComp.childLocs);
+      this.unmounted(loc);
+    }
+  }
+  \\],
+
+  13: [\\
+  function unmountSeq(locs) {
+    if (locs.length === 0) {
+      return null;
+    } else {
+      var loc = locs.shift();
+      this.unmount(loc);
+      this.unmountSeq(locs);
+    }
+  }
+  \\],
+
+  14: [\\
+  function unmounted(loc) {
+    // remove `loc` from listener map
+  }
+  \\],
+
+  15: [\\
+  function rerender(loc) {
+    var props = this.heap[loc].props;
+    var comp = this.shapeMap[loc].mountedComp.comp;
+
+    if (props.render !== undefined) {
+      return this.extractCompDesc(props.render(props));
+    } else {
+      return comp;
+    }
+  }
+  \\],
+
+  16: [\\
+  function reconcile(comp, loc) {
+    var shape = this.shapeMap[loc];
+    var mountedComp = shape.mountedComp.comp;
+
+    if (comp.type !== mountedComp.type) {
+      this.unmount(loc);
+      return this.mount(comp);
+    } else {
+      var nextProps = comp.props;
+      this.heap[loc].props = nextProps;
+
+      var nextComp = this.rerender(loc);
+
+      var nextChildComps = nextComp.children;
+      var nextChildLocs = this.reconcileSeq(nextChildComps, shape.childLocs)
+      var nextMountedComp = new MountedCompDesc(comp, loc);
+
+      return this.reconciled(nextMountedComp, nextChildLocs);
+    }
+  }
+  \\],
+
+  17: [\\
+  function reconcileSeq(comps, locs) {
+    if (comps.length === 0 && locs.length === 0) return [];
+    if (comps.length === 0) return this.unmountSeq(locs);
+    if (locs.length === 0) return this.mountSeq(comps);
+
+    var comp = comps[0];
+    var loc = locs[0];
+    var mountLoc = this.reconcile(comp, loc);
+
+    var tailMountLocs = this.reconcileSeq(comps.slice(1), locs.slice(1));
+    return [mountLoc].concat(tailMountLocs);
+  }
+  \\],
+
+  18: [\\
+  function reconciled(mountedComp, childLocs) {
+    var loc = mountedComp.loc;
+
+    this.shapeMap[loc] = {
+      mountedComp: mountedComp,
+      childLocs: childLocs,
+    };
+
+    return loc;
+  }
+  \\],
+
+  19: [\\
+  function setState(loc, newState) {
+    var nextState = this.stateMap[loc];
+    var shape = this.shapeMap[loc];
+
+    var instance = shape.mountedComp.comp.props.instance;
+    if (instance !== undefined) {
+      var compState = instance.state;
+      for (var key in nextState) compState[key] = nextState[key];
+      for (var key in newState) compState[key] = newState[key];
+      this.stateMap[loc] = compState;
+      instance.state = compState;
+    }
+
+    var nextChildComps = this.render(shape.mountedComp.comp);
+
+    var nextChildLocs = this.reconcileSeq(nextChildComps, shape.childLocs);
+    return this.reconciled(shape.mountedComp, nextChildLocs);
+  }
+  \\],
+
+  20: [\\
+  function extractCompDesc(element) {
+    // plain text
+    if (typeof element === 'string') {
+      return new CompDesc('plaintext', { text: element }, []);
+    }
+    // html element
+    else if (typeof element.type === 'string') {
+      var children = [];
+      var childElts = element.props.children;
+      for (var i = 0; i < childElts.length; i++) {
+        children[i] = this.extractCompDesc(childElts[i]);
+      }
+
+      return new CompDesc(element.type, element.props, children);
+    }
+    // function component
+    else if (!element.type.prototype.__class__) {
+      element.props.render = element.type;
+      return new CompDesc(element.type, element.props, []);
+    }
+    // class component
+    else {
+      var instance = new element.type();
+      element.props.instance = instance;
+      element.props.render = instance.render.bind(instance);
+      return new CompDesc(element.type, element.props, []);
+    }
+  }
+  \\],
+
+  21: [\\
+  function printState() {
+    var newline = String.fromCharCode(10);
+    var result = '====== Shape Map ======' + newline + newline;
+    for (var key in this.shapeMap) {
+      var shape = this.shapeMap[key];
+      result += key + ': ' + shape.mountedComp.toString(shape.childLocs) + newline;
+    }
+
+    return result;
+  }
+  \\],
+
+  22: [\\
+  function CompDesc(type, props, children) {
+    this.type = type;
+    this.props = props;
+    this.children = children;
+  }
+  \\],
+
+  23: [\\
+  function toString(loc, childLocs) {
+    if (this.type === 'plaintext') {
+      return this.props.text;
+    }
+
+    var type;
+    if (typeof this.type === 'string') {
+      type = this.type;
+    } else {
+      type = this.type.name;
+    }
+
+    var result = '<' + type + ' @' + loc + '';
+    for (var key in this.props) {
+      if (key === 'children' || key === 'render' || key === 'instance') continue;
+      result += ' ' + key + '=' + '"' + this.props[key] + '"';
+    }
+    result += '>';
+
+    for (var i = 0; i < childLocs.length; i++) {
+      result += '@' + childLocs[i];
+      if (i < childLocs.length - 1) result += ', ';
+    }
+    result += '</' + type + '>';
+    return result;
+  }
+  \\],
+
+  24: [\\
+  function MountedCompDesc(comp, loc) {
+    this.comp = comp;
+    this.loc = loc;
+  }
+  \\],
+
+  25: [\\
+  function toString(loc, childLocs) {
+    return this.comp.toString(this.loc, childLocs);
+  }
+  \\]
+}

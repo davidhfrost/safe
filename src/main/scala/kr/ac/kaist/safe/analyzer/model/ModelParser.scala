@@ -92,7 +92,9 @@ trait ModelParser extends JavaTokenParsers with RegexParsers {
   val jsPrimType: Parser[Value] = jsStrT | jsNumT | jsBoolT
 
   // JavaScript value
-  val jsLoc: Parser[Loc] = "#" ~> """[_\[\]0-9a-zA-Z.<>]+""".r ^^ { Loc(_) }
+  val jsLoc: Parser[Loc] = "#" ~> """[_\[\]0-9a-zA-Z.<>]+""".r ^^ { str =>
+    Loc(str)
+  }
   val jsValue: Parser[Value] = jsPValue | jsLoc | jsPrimType
 
   // JavaScript data property

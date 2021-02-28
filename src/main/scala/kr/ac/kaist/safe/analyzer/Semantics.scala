@@ -508,20 +508,10 @@ case class Semantics(
     (name, args, loc) match {
       case (NodeUtil.INTERNAL_REACT_RENDER, List(element, container), None) => {
         val (elementValue, excSetO) = V(element, st)
-        val desc: CompDesc = ReactHelper.extractCompDesc(elementValue, st)
+        val desc: CompDesc = ReactHelper.extractCompDesc(elementValue, st, cfg)
         ReactState.mount(desc)
         Console.println(ReactState.toString)
         (st, excSt)
-      }
-
-      case (NodeUtil.INTERNAL_REACT_GET, List(addr), None) => {
-        val (addrVal, excSet1) = V(addr, st)
-        val allocSite = PredAllocSite("ReactAddress" + TypeConversionHelper.ToString(addrVal))
-        var loc = Loc(allocSite, tp)
-        var obj = st.heap.get(loc)
-
-        val newSt = st.varStore(lhs, AbsValue(loc))
-        (newSt, excSt)
       }
 
 
@@ -1368,6 +1358,8 @@ case class Semantics(
         val newExcSt = st.raiseException(excSet)
         (st1, excSt ⊔ newExcSt)
       }
+
+      // seems to be unused; normal usage of @Call involves three arguments, the third of which is an argument list
       case (NodeUtil.INTERNAL_CALL, List(exprO, exprP), None) => {
         val (v, excSetO) = V(exprO, st)
         val (p, excSetP) = V(exprP, st)

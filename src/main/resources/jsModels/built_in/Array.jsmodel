@@ -970,7 +970,7 @@ Function: {
       var T = undefined;
     }
     // 6. Let k be 0.
-    var k = 0; 
+    var k = 0;
     // 7. Repeat, while k < len
     while (k < len) {
       // a. Let Pk be ToString(k).
@@ -1126,6 +1126,10 @@ Function: {
       // d. Increase k by 1.
       k += 1;
     }
+
+    ///////// changed from original SAFE model
+    A.length = k
+
     // 10. Return A.
     return A;
   }

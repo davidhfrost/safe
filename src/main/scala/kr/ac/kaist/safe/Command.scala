@@ -35,6 +35,8 @@ class CommandObj[Result](
     args: List[String],
     testMode: Boolean = false
   ): Try[Result] = {
+    println("Phase pipeline: " + pList)
+
     val safeConfig = SafeConfig(this, testMode = testMode)
     val parser = new ArgParser(this, safeConfig)
     val modePattern = "--(.+)".r
@@ -134,6 +136,10 @@ case object CmdAnalyze extends CommandObj("analyze", CmdHeapBuild >> Analyze, Ma
 
 // bugDetect
 case object CmdBugDetect extends CommandObj("bugDetect", CmdAnalyze >> BugDetect) {
+  override def display(cfg: CFG): Unit = ()
+}
+
+case object CmdReactBugDetect extends CommandObj("reactBugDetect", CmdAnalyze >> ReactBugDetect) {
   override def display(cfg: CFG): Unit = ()
 }
 

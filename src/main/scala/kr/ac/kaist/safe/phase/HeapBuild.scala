@@ -31,6 +31,7 @@ case object HeapBuild extends PhaseObj[CFG, HeapBuildConfig, (CFG, Semantics, Tr
     config: HeapBuildConfig
   ): Try[(CFG, Semantics, TracePartition, HeapBuildConfig, Int)] = {
     // initialization
+
     register(
       config.AbsUndef,
       config.AbsNull,

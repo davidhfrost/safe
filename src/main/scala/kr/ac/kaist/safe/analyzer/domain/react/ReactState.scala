@@ -1,7 +1,8 @@
 package kr.ac.kaist.safe.analyzer.domain.react
 
 import kr.ac.kaist.safe.analyzer.TypeConversionHelper
-import kr.ac.kaist.safe.analyzer.domain.{AbsNum, AbsObj, AbsState, AbsStr, AbsValue, ConFin, ConSet, Loc, Num, fid2iv, locset2v, pv2v}
+import kr.ac.kaist.safe.analyzer.domain.{AbsIValue, AbsNum, AbsObj, AbsState, AbsStr, AbsValue, ConFin, ConOne, ConSet, ICall, Loc, Num, fid2iv, locset2v, pv2v}
+import kr.ac.kaist.safe.nodes.cfg.{CFG, CFGFunction, FunctionId}
 
 import scala.collection.immutable.Map
 
@@ -22,50 +23,76 @@ case class TextDesc(text: AbsStr) extends CompDesc {
 case class MountedComp(comp: CompDesc, loc: Loc)
 
 object ReactHelper {
-  def extractCompDesc(elementValue: AbsValue, st: AbsState): CompDesc = {
+  def extractChildrenDescsFromProps(props: AbsObj, st: AbsState, cfg: CFG): List[CompDesc] = {
+    // compute children object
+    val (childrenDesc, undefChildren) = props.GetOwnProperty("children")
+    val (childrenVal, _) = childrenDesc.value
+    val childrenObj: AbsObj = st.heap.get(childrenVal.locset)
+
+    // compute number of children
+    val (numChildrenDesc, undefNumChildren) = childrenObj.GetOwnProperty("length")
+    val (numChildrenVal, _) = numChildrenDesc.value
+    val numChildren = TypeConversionHelper.ToNumber(numChildrenVal).gamma match {
+      case ConFin(values) => {
+        if (values.size >= 1) values.map(n => n.num).min.toInt
+        else 0
+      }
+      case _ => 0
+    }
+
+    // recursively extract children from children object
+    var children: List[CompDesc] = Nil
+    if (numChildren > 0) {
+      children = (0 to (numChildren - 1)).map(i => {
+        val (childDesc, _) = childrenObj.GetOwnProperty(i.toString)
+        val (childVal, _) = childDesc.value
+        ReactHelper.extractCompDesc(childVal, st, cfg)
+      }).toList
+    }
+
+    children
+  }
+
+  def extractCompDesc(elementValue: AbsValue, st: AbsState, cfg: CFG): CompDesc = {
     // string literal child
     if (elementValue.pvalue.strval != AbsStr.Bot) {
       TextDesc(elementValue.pvalue.strval)
     } else {
       val obj: AbsObj = st.heap.get(elementValue.locset)
 
-      // compute tag string
-      val (tagDesc, _) = obj.GetOwnProperty("type")
-      val (tagVal, _) = tagDesc.value
-      val tag: AbsStr = tagVal.pvalue.strval
-
       // compute props object
       val (propsDesc, _) = obj.GetOwnProperty("props")
       val (propsVal, _) = propsDesc.value
       val props: AbsObj = st.heap.get(propsVal.locset)
 
-      // compute children object
-      val (childrenDesc, undefChildren) = props.GetOwnProperty("children")
-      val (childrenVal, _) = childrenDesc.value
-      val childrenObj: AbsObj = st.heap.get(childrenVal.locset)
+      // compute tag string
+      val (tagDesc, _) = obj.GetOwnProperty("type")
+      val (tagVal, _) = tagDesc.value
 
-      // compute number of children
-      val (numChildrenDesc, undefNumChildren) = childrenObj.GetOwnProperty("length")
-      val (numChildrenVal, _) = numChildrenDesc.value
-      val numChildren = TypeConversionHelper.ToNumber(numChildrenVal).gamma match {
-        case ConFin(values) => {
-          if (values.size >= 1) values.map(n => n.num).min.toInt
-          else 0
+      // html tag encoded as a string
+      if (tagVal.pvalue.strval != AbsStr.Bot) {
+        val children = extractChildrenDescsFromProps(props, st, cfg)
+        ReactDesc(tagVal.pvalue.strval, props, children)
+      }
+      // function tag
+      else {
+
+        val locset = tagVal.locset
+        Console.println("locset: " + locset)
+
+        val obj = st.heap.get(locset)
+        val fn: CFGFunction = obj(ICall).fidset.getSingle match {
+          case ConOne(f) => {
+            cfg.getFunc(f.id) match {
+              case Some(f) => f
+            }
+          }
         }
-        case _ => 0
-      }
 
-      // recursively extract children from children object
-      var children: List[CompDesc] = Nil
-      if (numChildren > 0) {
-        children = (0 to (numChildren - 1)).map(i => {
-          val (childDesc, _) = childrenObj.GetOwnProperty(i.toString)
-          val (childVal, _) = childDesc.value
-          ReactHelper.extractCompDesc(childVal, st)
-        }).toList
-      }
 
-      ReactDesc(tag, props, children)
+
+        TextDesc(AbsStr(""))
+      }
     }
   }
 }

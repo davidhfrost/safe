@@ -25,6 +25,7 @@ object Safe {
     (tokens.toList match {
       case str :: args => cmdMap.get(str) match {
         case Some(CmdAnalyze) => CmdAnalyze(s"-config=$CONFIG_FILE" :: args, false)
+        case Some(CmdReactBugDetect) => CmdReactBugDetect(s"-config=$CONFIG_FILE" :: args, false)
         case Some(cmd) => cmd(args, false)
         case None => Failure(NoCmdError(str))
       }
@@ -78,7 +79,8 @@ object Safe {
     CmdAnalyze,
     CmdBugDetect,
     CmdHelp,
-    CmdWeb
+    CmdWeb,
+    CmdReactBugDetect
   )
   val cmdMap = commands.foldLeft[Map[String, Command]](Map()) {
     case (map, cmd) => map + (cmd.name -> cmd)
@@ -94,7 +96,8 @@ object Safe {
     Analyze,
     BugDetect,
     Help,
-    Web
+    Web,
+    ReactBugDetect
   )
 
   // global options
