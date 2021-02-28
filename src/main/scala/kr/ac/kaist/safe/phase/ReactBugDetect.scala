@@ -170,13 +170,38 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
         block match {
           case callBlock: Call => {
             val (calleeVal, _) = semantics.V(callBlock.callInst.fun, st)
-            println("fidsCalledInFunction calleeVal: " + calleeVal)
+            //println("fidsCalledInFunction calleeVal: " + calleeVal)
             blockFids ++ funcValFids(st, calleeVal)
           }
           case _ => blockFids
         }
       })
     })
+  }
+
+  private def fidsCalledByFuncVal(cfg: CFG, semantics: Semantics, st: AbsState, calleeV: AbsValue): Set[FunctionId] = {
+    funcValFids(st, calleeV).foldLeft(Set[FunctionId]())((calledFids, calleeFid) => {
+      cfg.getFunc(calleeFid) match {
+        case None => calledFids
+        case Some(func) => {
+          calledFids ++ fidsCalledInFunction(semantics, func)
+        }
+      }
+    })
+  }
+
+  private def foldOverIntKeys[T](st: AbsState, arrV: AbsValue, init: T, cb: (T, Int, (AbsDesc, AbsUndef)) => T): T = {
+    arrV.locset.map(st.heap.get)
+      .foldLeft(init)((result, arrObj) => {
+        var locResult = result
+        arrObj.nmap.map.foldLeft(result)((locResult, pair) => {
+          val (key, optV) = pair
+          Try(key.toInt).toOption match {
+            case Some(i) => cb(locResult, i, arrObj.GetOwnProperty(AbsStr(i.toString)))
+            case None => locResult
+          }
+        })
+      })
   }
 
   private def checkCallBlock(cfg: CFG, semantics: Semantics, callBlock: Call): List[String] = {
@@ -190,43 +215,27 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
       val args = callBlock.callInst.arguments
       val (argsV, excSet1) = semantics.V(args, st)
 
-      val fidsCalledByCallee = funcValFids(st, calleeV).foldLeft(Set[FunctionId]())((calledFids, calleeFid) => {
-        cfg.getFunc(calleeFid) match {
-          case None => calledFids
-          case Some(func) => {
-            calledFids ++ fidsCalledInFunction(semantics, func)
+      val fidsCalledByCallee = fidsCalledByFuncVal(cfg, semantics, st, calleeV)
+
+      result ++= foldOverIntKeys(st, argsV, List[String](), (result: List[String], i: Int, pair) => {
+        val (argDesc, argUndef) = pair
+        val (argV, _) = argDesc.value
+        argV.locset.foldLeft(result)((result, argLoc) => {
+          val argObj = st.heap.get(argLoc)
+          // check if the argument is an unbound function that should generate a warning
+          val argCalledByCallee = funcValFids(st, argV).intersect(fidsCalledByCallee).nonEmpty
+          println("func val fids: " + funcValFids(st, argV))
+          println("fids called by callee: " + fidsCalledByCallee)
+          if (isUnboundFunctionUsingThis(cfg, st, argObj) && argCalledByCallee) {
+            // generate an error message
+            val lineNum = callBlock.callInst.ir.line
+            val fnName = functionName(cfg, st, calleeV)
+            s"Warning (line $lineNum): Unbound function passed as argument $i to $fnName." :: result
+          } else {
+            result
           }
-        }
-      })
-      // iterate over arguments object locations
-      argsV.locset.map(st.heap.get)
-        .foreach(argsObj => {
-          // iterate over key-value pairs in the arguments object
-          argsObj.nmap.map.foreach(pair => {
-            val (key, optV) = pair
-            // check if the key is an integer
-            Try(key.toInt).toOption match {
-              case Some(i) => {
-                val (argDesc, _) = argsObj.GetOwnProperty(AbsStr(i.toString))
-                val (argV, _) = argDesc.value
-                argV.locset.foreach(argLoc => {
-                  val argObj = st.heap.get(argLoc)
-                  // check if the argument is an unbound function that should generate a warning
-                  val argCalledByCallee = funcValFids(st, argV).intersect(fidsCalledByCallee).nonEmpty
-                  println("func val fids: " + funcValFids(st, argV))
-                  println("fids called by callee: " + fidsCalledByCallee)
-                  if (isUnboundFunctionUsingThis(cfg, st, argObj) && argCalledByCallee) {
-                    // generate an error message
-                    val lineNum = callBlock.callInst.ir.line
-                    val fnName = functionName(cfg, st, calleeV)
-                    result = s"Warning (line $lineNum): Unbound function passed as argument $i to $fnName." :: result
-                  }
-                })
-              }
-              case None => {}
-            }
-          })
         })
+      })
     })
 
     result
