@@ -170,7 +170,6 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
         block match {
           case callBlock: Call => {
             val (calleeVal, _) = semantics.V(callBlock.callInst.fun, st)
-            //println("fidsCalledInFunction calleeVal: " + calleeVal)
             blockFids ++ funcValFids(st, calleeVal)
           }
           case _ => blockFids
@@ -179,6 +178,7 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
     })
   }
 
+  // computes the set of `FunctionId` values called by the `AbsValue` at `calleeV`, which is treated as a function.
   private def fidsCalledByFuncVal(cfg: CFG, semantics: Semantics, st: AbsState, calleeV: AbsValue): Set[FunctionId] = {
     funcValFids(st, calleeV).foldLeft(Set[FunctionId]())((calledFids, calleeFid) => {
       cfg.getFunc(calleeFid) match {
@@ -190,6 +190,8 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
     })
   }
 
+  // performs a left fold over the integer-valued keys of an `AbsValue`.
+  // this is meant to iterate over the usual array values of an array object.
   private def foldOverIntKeys[T](st: AbsState, arrV: AbsValue, init: T, cb: (T, Int, (AbsDesc, AbsUndef)) => T): T = {
     arrV.locset.map(st.heap.get)
       .foldLeft(init)((result, arrObj) => {
@@ -204,20 +206,23 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
       })
   }
 
-  private def checkCallBlock(cfg: CFG, semantics: Semantics, callBlock: Call): List[String] = {
-    val func = callBlock.func
-    val callee = callBlock.callInst.fun
-    var result = List[String]()
-
-    semantics.getState(callBlock).foreach(pair => {
+  // checks the call for an instance of the "unbound context" bug.
+  // in this bug:
+  //   - an argument to the callee is a function `f`
+  //   - `f` has an unbound `this` value
+  //   - `f` uses `this` in its body
+  //   - the callee calls `f`.
+  // it's likely that `f` is being called with an incorrect context when the above holds.
+  private def checkCallBlockForUnboundCtx(cfg: CFG, semantics: Semantics, callBlock: Call): List[String] = {
+    semantics.getState(callBlock).foldLeft(List[String]())((result, pair) => {
       val (tp, st) = pair
-      val (calleeV, excSetO) = semantics.V(callee, st)
+      val (calleeV, excSetO) = semantics.V(callBlock.callInst.fun, st)
       val args = callBlock.callInst.arguments
       val (argsV, excSet1) = semantics.V(args, st)
 
       val fidsCalledByCallee = fidsCalledByFuncVal(cfg, semantics, st, calleeV)
 
-      result ++= foldOverIntKeys(st, argsV, List[String](), (result: List[String], i: Int, pair) => {
+      result ++ foldOverIntKeys(st, argsV, List[String](), (result: List[String], i: Int, pair) => {
         val (argDesc, argUndef) = pair
         val (argV, _) = argDesc.value
         argV.locset.foldLeft(result)((result, argLoc) => {
@@ -230,15 +235,18 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
             // generate an error message
             val lineNum = callBlock.callInst.ir.line
             val fnName = functionName(cfg, st, calleeV)
-            s"Warning (line $lineNum): Unbound function passed as argument $i to $fnName." :: result
+            val msg = s"Warning (line $lineNum): Unbound function passed as argument $i to $fnName."
+            msg :: result
           } else {
             result
           }
         })
       })
     })
+  }
 
-    result
+  private def checkCallBlock(cfg: CFG, semantics: Semantics, callBlock: Call): List[String] = {
+    checkCallBlockForUnboundCtx(cfg, semantics, callBlock)
   }
 
   // Check block/instruction-level rules: ConditionalBranch
