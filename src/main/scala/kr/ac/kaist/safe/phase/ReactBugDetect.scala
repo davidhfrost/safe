@@ -206,6 +206,43 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
       })
   }
 
+  private def locName(loc: Loc): String = {
+    loc match {
+      case TraceSensLoc(innerLoc, tp) => locName(innerLoc)
+      case UserAllocSite(id) => id.toString
+      case PredAllocSite(name) => name
+      case _ => "unknown"
+    }
+  }
+
+  private val arrayIteratorNames: List[String] = List[String](
+    "Array.prototype.map",
+    "Array.prototype.filter",
+    "Array.prototype.forEach"
+  )
+
+  private def calleeIsArrayIterator(st: AbsState, calleeV: AbsValue): Boolean = {
+    calleeV.locset.exists(loc => {
+      arrayIteratorNames.contains(locName(loc))
+    })
+  }
+
+  private val eventListenerNames: List[String] = List[String](
+    "EventTarget.prototype.addEventListener"
+  )
+
+  private def calleeIsEventListener(calleeV: AbsValue): Boolean = {
+    calleeV.locset.exists(loc => {
+      eventListenerNames.contains(locName(loc))
+    })
+  }
+
+  private val createElementName: String = "React.createElement"
+
+  private def calleeIsCreateElement(calleeV: AbsValue): Boolean = {
+    calleeV.locset.exists(loc => locName(loc) == createElementName)
+  }
+
   // checks the call for an instance of the "unbound context" bug.
   // in this bug:
   //   - an argument to the callee is a function `f`
@@ -213,7 +250,7 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
   //   - `f` uses `this` in its body
   //   - the callee calls `f`.
   // it's likely that `f` is being called with an incorrect context when the above holds.
-  private def checkCallBlockForUnboundCtx(cfg: CFG, semantics: Semantics, callBlock: Call): List[String] = {
+  private def checkCallBlockForUnboundArg(cfg: CFG, semantics: Semantics, callBlock: Call): List[String] = {
     semantics.getState(callBlock).foldLeft(List[String]())((result, pair) => {
       val (tp, st) = pair
       val (calleeV, excSetO) = semantics.V(callBlock.callInst.fun, st)
@@ -221,19 +258,45 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
       val (argsV, excSet1) = semantics.V(args, st)
 
       val fidsCalledByCallee = fidsCalledByFuncVal(cfg, semantics, st, calleeV)
+      val isArrayIterator = calleeIsArrayIterator(st, calleeV)
+      val isEventListener = calleeIsEventListener(calleeV)
+      val isCreateElement = calleeIsCreateElement(calleeV)
+
+      val lineNum = callBlock.callInst.ir.line
+      //println(f"Call block: callee=$calleeV, isArrayIterator=$isArrayIterator, isCreateElt=$isCreateElement")
 
       result ++ foldOverIntKeys(st, argsV, List[String](), (result: List[String], i: Int, pair) => {
+        //println(f"folding over key i=$i, argsV=$argsV")
         val (argDesc, argUndef) = pair
         val (argV, _) = argDesc.value
+        //println(s"argV.locset=${argV.locset}")
         argV.locset.foldLeft(result)((result, argLoc) => {
           val argObj = st.heap.get(argLoc)
           // check if the argument is an unbound function that should generate a warning
-          val argCalledByCallee = funcValFids(st, argV).intersect(fidsCalledByCallee).nonEmpty
-          println("func val fids: " + funcValFids(st, argV))
-          println("fids called by callee: " + fidsCalledByCallee)
-          if (isUnboundFunctionUsingThis(cfg, st, argObj) && argCalledByCallee) {
+          val argCalledByCallee = (isArrayIterator && i == 0) || funcValFids(st, argV).intersect(fidsCalledByCallee).nonEmpty
+          val isUnbound = isUnboundFunctionUsingThis(cfg, st, argObj)
+
+          //println("func val fids: " + funcValFids(st, argV))
+          //println("fids called by callee: " + fidsCalledByCallee)
+          //println(f"isUnbound=$isUnbound, argCalledByCallee=$argCalledByCallee")
+          if (isEventListener && i == 1) {
+            val fnName = functionName(cfg, st, calleeV)
+            val msg = s"Warning (line $lineNum): Unbound function added as event listener."
+            msg :: result
+          } else if (isCreateElement && i == 1) {
+            argObj.nmap.map.foldLeft(result)((result, keyValue) => {
+              val (k, v) = keyValue
+              val vLocs = v.value.value.locset
+              val unboundLocs = vLocs.filter(loc => isUnboundFunctionUsingThis(cfg, st, st.heap.get(loc)))
+              val errors = unboundLocs.map(loc => {
+                s"Warning (line $lineNum): Unbound function passed as prop '$k'."
+              }).toList
+              // generate an error message
+//              if (isUnboundFunctionUsingThis(cfg, st, v))
+              errors ++ result
+            })
+          } else if (isUnbound && argCalledByCallee) {
             // generate an error message
-            val lineNum = callBlock.callInst.ir.line
             val fnName = functionName(cfg, st, calleeV)
             val msg = s"Warning (line $lineNum): Unbound function passed as argument $i to $fnName."
             msg :: result
@@ -246,7 +309,7 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
   }
 
   private def checkCallBlock(cfg: CFG, semantics: Semantics, callBlock: Call): List[String] = {
-    checkCallBlockForUnboundCtx(cfg, semantics, callBlock)
+    checkCallBlockForUnboundArg(cfg, semantics, callBlock)
   }
 
   // Check block/instruction-level rules: ConditionalBranch
@@ -269,7 +332,11 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
 
 
     val result = cfg.getUserBlocks.foldRight(List[String]())((b, r) => checkBlock(cfg, semantics, b) ++ r)
-    result.reverse.foreach(println)
+    if (result.length > 0) {
+      result.distinct.reverse.foreach(println)
+    } else {
+      println("No warnings.")
+    }
 
     Success(cfg)
   }

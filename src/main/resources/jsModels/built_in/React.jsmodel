@@ -1,0 +1,75 @@
+Heap: {
+  #Global: {
+    "React": <#React, T, T, T>
+  },
+  #React: {
+    "createElement": <#React.createElement, T, T, T>,
+    "Component": <#React.Component, T, T, T>
+  },
+  #React.createElement: {
+    [[Call]]: fun(1),
+    [[Class]]: "Function",
+    [[Prototype]]: #Function.prototype,
+    "length": <3, T, T, T>
+  },
+  #React.Component: {
+    [[Call]]: fun(2),
+    [[Class]]: "Function",
+    [[Prototype]]: #React.Component.prototype,
+    "prototype": <#React.Component.prototype, F, F, F>,
+    "length": <0, T, T, T>
+  },
+  #React.Component.prototype: {
+    [[Class]]: "Object",
+    [[Extensible]]: true,
+    [[Prototype]]: #Object.prototype,
+    "__class__": <true, T, T, T>,
+    "componentDidMount": <#React.Component.prototype.componentDidMount, T, T, T>
+  },
+  #React.Component.prototype.componentDidMount: {
+    [[Call]]: fun(3),
+    [[Class]]: "Function",
+    [[Prototype]]: #Function.prototype,
+    "length": <0, T, T, T>
+  }
+}
+
+Function: {
+  1: [\\
+  function createElement(type, props, children) {
+    if (props === null) props = {};
+
+    var childArray = [];
+
+    for (var i = 2; i < arguments.length; i++) {
+      var child = arguments[i];
+      if (child === null) continue;
+      if (typeof child === 'string') {
+        child = { type: 'plaintext', props: { text: child, children: [] } };
+      }
+
+      if (Array.isArray(child)) {
+        for (var j = 0; j < child.length; j++) {
+          childArray.push(child[j]);
+        }
+      } else {
+        childArray.push(child);
+      }
+    }
+
+    props.children = childArray;
+
+    return { type: type, props: props };
+  }
+  \\],
+
+  2: [\\
+  function Component () {
+  }
+  \\],
+
+  3: [\\
+  function componentDidMount () {
+  }
+  \\]
+}
