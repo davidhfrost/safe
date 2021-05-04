@@ -49,7 +49,8 @@ Expr Assignment =
      { Span span = createSpan(yyStart,yyCount);
        yyValue = new AssignOpApp(NodeUtil.makeASTNodeInfo(span), a1, a2, a3);
      }
-   / Conditional;
+   / Conditional
+   / ArrowFunction;
 
 /*
  * Conditional ::=
@@ -491,6 +492,7 @@ LHS MemberExpr =
 
 LHS MemberExprFront =
      FunctionExpr
+   / ArrowFunction
    / PrimaryExpr
    / new w a1:MemberExpr w a2:Args
      { Span span = createSpan(yyStart,yyCount+1);

@@ -1,8 +1,8 @@
 package kr.ac.kaist.safe.analyzer.domain.react
 
 import kr.ac.kaist.safe.analyzer.TypeConversionHelper
-import kr.ac.kaist.safe.analyzer.domain.{AbsIValue, AbsNum, AbsObj, AbsState, AbsStr, AbsValue, ConFin, ConOne, ConSet, ICall, Loc, Num, fid2iv, locset2v, pv2v}
-import kr.ac.kaist.safe.nodes.cfg.{CFG, CFGFunction, FunctionId}
+import kr.ac.kaist.safe.analyzer.domain.{ AbsIValue, AbsNum, AbsObj, AbsState, AbsStr, AbsValue, ConFin, ConOne, ConSet, ICall, Loc, Num, fid2iv, locset2v, pv2v }
+import kr.ac.kaist.safe.nodes.cfg.{ CFG, CFGFunction, FunctionId }
 
 import scala.collection.immutable.Map
 
@@ -73,8 +73,7 @@ object ReactHelper {
       if (tagVal.pvalue.strval != AbsStr.Bot) {
         val children = extractChildrenDescsFromProps(props, st, cfg)
         ReactDesc(tagVal.pvalue.strval, props, children)
-      }
-      // function tag
+      } // function tag
       else {
 
         val locset = tagVal.locset
@@ -88,8 +87,6 @@ object ReactHelper {
             }
           }
         }
-
-
 
         TextDesc(AbsStr(""))
       }
@@ -168,6 +165,6 @@ object ReactState {
 
   override def toString: String = {
     "=======Heap=======\n\n" + heap.mkString("\n") + "\n" +
-    "=======Shape map=======\n\n" + shapeMap.mkString("\n\n") + "\n\n"
+      "=======Shape map=======\n\n" + shapeMap.mkString("\n\n") + "\n\n"
   }
 }

@@ -18,11 +18,11 @@ import kr.ac.kaist.safe.analyzer.domain._
 import kr.ac.kaist.safe.analyzer.model._
 import kr.ac.kaist.safe.nodes.ir._
 import kr.ac.kaist.safe.nodes.cfg._
-import kr.ac.kaist.safe.util.{AllocSite, EJSBool, EJSNull, EJSNumber, EJSString, EJSUndef, NodeUtil, Old, PredAllocSite, Recency, Recent, UserAllocSite}
+import kr.ac.kaist.safe.util.{ AllocSite, EJSBool, EJSNull, EJSNumber, EJSString, EJSUndef, NodeUtil, Old, PredAllocSite, Recency, Recent, UserAllocSite }
 import kr.ac.kaist.safe.LINE_SEP
-import kr.ac.kaist.safe.analyzer.domain.react.{CompDesc, ReactHelper, ReactState}
+import kr.ac.kaist.safe.analyzer.domain.react.{ CompDesc, ReactHelper, ReactState }
 
-import scala.collection.mutable.{Map => MMap}
+import scala.collection.mutable.{ Map => MMap }
 
 case class Semantics(
     cfg: CFG,
@@ -513,7 +513,6 @@ case class Semantics(
         Console.println(ReactState.toString)
         (st, excSt)
       }
-
 
       case (NodeUtil.INTERNAL_PRINT, List(expr), None) => {
         val (v, excSet) = V(expr, st)

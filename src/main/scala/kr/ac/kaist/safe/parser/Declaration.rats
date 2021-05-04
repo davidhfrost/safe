@@ -20,6 +20,7 @@ import Symbol;
 import Identifier;
 import Keyword;
 import Spacing;
+import Expression;
 
 /*
  * Program ::= w Stmts? w EndOfFile
@@ -151,3 +152,37 @@ public LHS FunctionExpr =
                                             new Stmts(info, toList(a3._1()), a3._3()),
                                             f, ids, a3._2()));
      };
+
+
+
+// added
+
+private transient void ARROW = "=>" !(idrest);
+
+public LHS ArrowFunction =
+    a2:ArrowParameters w ARROW w a3:ConciseBody
+    {      Span span = createSpan(yyStart,yyCount+1);
+           ASTNodeInfo info = NodeUtil.makeASTNodeInfo(span);
+           Id f = new Id(NodeUtil.makeASTNodeInfo(span), "", Option.<String>apply(null), false);
+           scala.collection.immutable.List<Id> ids;
+           if (a2 == null) ids = nilIds;
+           else ids = toList(a2);
+           yyValue = new FunExpr(info,
+                                 new Functional(info, nilFds, nilVds,
+                                                new Stmts(info, toList(a3._1()), a3._3()),
+                                                f, ids, a3._2()));
+    };
+
+private Tuple3<List<Stmt>, String, Boolean> ConciseBody =
+    FunctionBody
+  / !(opencurly) &(a1:Assignment) Statement
+     {  Span span = createSpan(yyStart,yyCount);
+        Stmt returnStmt = new Return(NodeUtil.makeASTNodeInfo(span), Some.<Expr>apply(a1));
+        String str = NodeUtil.prBody(toList(list(returnStmt)));
+        yyValue = new Tuple3<List<Stmt>, String, Boolean>(list(returnStmt), "{ " + str + " }", Boolean.valueOf(false));
+     };
+
+
+private List<Id> ArrowParameters =
+      a1:Id { yyValue = list(a1); }
+    / openparen w yyValue:(w Params)? w closeparen;

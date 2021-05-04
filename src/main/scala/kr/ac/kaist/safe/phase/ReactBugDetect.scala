@@ -11,10 +11,10 @@
 
 package kr.ac.kaist.safe.phase
 
-import scala.util.{Failure, Success, Try}
+import scala.util.{ Failure, Success, Try }
 import kr.ac.kaist.safe.SafeConfig
 import kr.ac.kaist.safe.analyzer._
-import kr.ac.kaist.safe.analyzer.domain.{Map, _}
+import kr.ac.kaist.safe.analyzer.domain.{ Map, _ }
 import kr.ac.kaist.safe.nodes.cfg._
 import kr.ac.kaist.safe.LINE_SEP
 import kr.ac.kaist.safe.util._
@@ -59,10 +59,10 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
 
   // Check expression-level rules: AbsentPropertyRead
   private def checkExpr(expr: CFGExpr, state: AbsState,
-                        semantics: Semantics): List[String] = expr match {
+    semantics: Semantics): List[String] = expr match {
     // Don't check if this instruction is "LHS = <>fun<>["prototype"]".
     case CFGLoad(_, CFGVarRef(_, CFGTempId(name, _)),
-    CFGVal(EJSString("prototype"))) if name.startsWith("<>fun<>") =>
+      CFGVal(EJSString("prototype"))) if name.startsWith("<>fun<>") =>
       List[String]()
     case CFGLoad(_, obj, index) =>
       val (objV, _) = semantics.V(obj, state)
@@ -152,7 +152,7 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
     val isFunction = obj(IClass).toString == "\"Function\""
     val isUnbound = obj(IBoundThis).isBottom
     val refsThis = obj(ICall).fidset.exists(funcsReferencingThis.contains)
-    
+
     isNamed && isFunction && isUnbound && refsThis
   }
 
@@ -292,7 +292,7 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
                 s"Warning (line $lineNum): Unbound function passed as prop '$k'."
               }).toList
               // generate an error message
-//              if (isUnboundFunctionUsingThis(cfg, st, v))
+              //              if (isUnboundFunctionUsingThis(cfg, st, v))
               errors ++ result
             })
           } else if (isUnbound && argCalledByCallee) {
@@ -321,15 +321,14 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
   }
 
   def apply(
-     in: (CFG, Int, TracePartition, Semantics),
-     safeConfig: SafeConfig,
-     config: ReactBugDetectConfig
-   ): Try[CFG] = {
+    in: (CFG, Int, TracePartition, Semantics),
+    safeConfig: SafeConfig,
+    config: ReactBugDetectConfig
+  ): Try[CFG] = {
     val (cfg, _, _, semantics) = in
 
     // compute the functions using the `this` keyword
     cacheFunctionsUsingThis(cfg)
-
 
     val result = cfg.getUserBlocks.foldRight(List[String]())((b, r) => checkBlock(cfg, semantics, b) ++ r)
     if (result.length > 0) {
