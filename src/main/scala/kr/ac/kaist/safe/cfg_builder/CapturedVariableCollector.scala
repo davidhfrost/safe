@@ -56,7 +56,7 @@ class CapturedVariableCollector(
 
     // IRFunctional
     override def walk(func: IRFunctional): CapturedNames = func match {
-      case IRFunctional(_, _, name, params, args, fds, vds, body) =>
+      case IRFunctional(_, _, name, params, args, fds, vds, body, _) =>
         // flatten IRSeq in IRStmt list
         def flatten(stmts: List[IRStmt]): List[IRStmt] = {
           stmts.foldRight(List[IRStmt]()) {

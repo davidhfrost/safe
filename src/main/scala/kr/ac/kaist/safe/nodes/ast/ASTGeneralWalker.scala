@@ -237,7 +237,7 @@ trait ASTGeneralWalker[Result] {
   }
 
   def walk(node: Functional): Result = node match {
-    case Functional(info, fds, vds, stmts, name, params, body) =>
+    case Functional(info, fds, vds, stmts, name, params, body, isArrow) =>
       join(walk(info) :: fds.map(walk) ++ vds.map(walk) ++ List(walk(stmts), walk(name)) ++ params.map(walk): _*)
   }
 }

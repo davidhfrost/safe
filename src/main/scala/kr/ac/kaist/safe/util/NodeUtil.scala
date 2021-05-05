@@ -736,10 +736,10 @@ object NodeUtil {
     }
 
     override def walk(node: Functional): Functional = node match {
-      case Functional(i, fds, vds, Stmts(info, body, strict), name, params, bodyS) =>
+      case Functional(i, fds, vds, Stmts(info, body, strict), name, params, bodyS, isArrow) =>
         Functional(i, fds.map(walk), vds,
           Stmts(info, simplify(body.map(walk)), strict),
-          name, params, bodyS)
+          name, params, bodyS, isArrow)
     }
   }
 
@@ -768,9 +768,9 @@ object NodeUtil {
     }
 
     override def walk(node: IRFunctional): IRFunctional = node match {
-      case IRFunctional(astF, f, n, params, args, fds, vds, body) =>
+      case IRFunctional(astF, f, n, params, args, fds, vds, body, isArrow) =>
         IRFunctional(astF, f, n, params, simplify(args),
-          fds.map { fd: IRFunDecl => walk(fd) }, vds, simplify(body))
+          fds.map { fd: IRFunDecl => walk(fd) }, vds, simplify(body), isArrow)
     }
 
     override def walk(node: IRFunDecl): IRFunDecl = node match {

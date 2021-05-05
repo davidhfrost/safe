@@ -223,8 +223,8 @@ trait ASTWalker {
   }
 
   def walk(node: Functional): Functional = node match {
-    case Functional(info, fds, vds, stmts, name, params, body) =>
+    case Functional(info, fds, vds, stmts, name, params, body, isArrow) =>
       Functional(walk(info), fds.map(walk), vds.map(walk), walk(stmts), walk(name),
-        params.map(walk), body)
+        params.map(walk), body, isArrow)
   }
 }

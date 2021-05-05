@@ -232,7 +232,7 @@ class Disambiguator(program: Program) {
   // walker for disambiguating ASTNode
   private object DisambWalker extends ASTWalker {
     def functional(i: ASTNodeInfo, span: Span, name: Id, params: List[Id], fds: List[FunDecl],
-      vds: List[VarDecl], body: Stmts, bodyS: String): Functional = {
+      vds: List[VarDecl], body: Stmts, bodyS: String, isArrow: Boolean): Functional = {
       val oldToplevel = toplevel
       toplevel = false
       labEnv = EMPTY_LAB_ENV
@@ -258,7 +258,7 @@ class Disambiguator(program: Program) {
       }
       inFunctionBody = oldInFunctionBody
       toplevel = oldToplevel
-      Functional(i, newFds, newVds, newBody, name, pairsParams.map { case (_, nid) => nid }, bodyS)
+      Functional(i, newFds, newVds, newBody, name, pairsParams.map { case (_, nid) => nid }, bodyS, isArrow)
     }
 
     override def walk(node: Program): Program = node match {
@@ -281,19 +281,19 @@ class Disambiguator(program: Program) {
     }
 
     override def walk(node: FunDecl): FunDecl = node match {
-      case FunDecl(info, Functional(i, fds, vds, body, name, params, bodyS), strict) =>
+      case FunDecl(info, Functional(i, fds, vds, body, name, params, bodyS, isArrow), strict) =>
         val oldEnv = (env, labEnv)
         val newName = newId(name, getEnvNoCheck(name))
         val result = FunDecl(
           info,
-          functional(i, info.span, newName, params, fds, vds, body, bodyS), strict
+          functional(i, info.span, newName, params, fds, vds, body, bodyS, isArrow), strict
         )
         setEnv(oldEnv)
         result
     }
 
     override def walk(node: LHS): LHS = node match {
-      case FunExpr(info, Functional(i, fds, vds, body, name, params, bodyS)) =>
+      case FunExpr(info, Functional(i, fds, vds, body, name, params, bodyS, isArrow)) =>
         val oldEnv = (env, labEnv)
         val oldToplevel = toplevel
         toplevel = false
@@ -301,7 +301,7 @@ class Disambiguator(program: Program) {
         addEnv(name, newName)
         val result = FunExpr(
           info,
-          functional(i, info.span, newName, params, fds, vds, body, bodyS)
+          functional(i, info.span, newName, params, fds, vds, body, bodyS, isArrow)
         )
         setEnv(oldEnv)
         toplevel = oldToplevel
@@ -329,20 +329,20 @@ class Disambiguator(program: Program) {
     }
 
     override def walk(node: Member): Member = node match {
-      case GetProp(info, prop, Functional(i, fds, vds, body, name, params, bodyS)) =>
+      case GetProp(info, prop, Functional(i, fds, vds, body, name, params, bodyS, isArrow)) =>
         val oldEnv = (env, labEnv)
         val newProp = newPropId(name)
         val newName = newProp.id
         val result = GetProp(info, newProp,
-          functional(i, info.span, newName, params, fds, vds, body, bodyS))
+          functional(i, info.span, newName, params, fds, vds, body, bodyS, isArrow))
         setEnv(oldEnv)
         result
-      case SetProp(info, prop, Functional(i, fds, vds, body, name, params, bodyS)) =>
+      case SetProp(info, prop, Functional(i, fds, vds, body, name, params, bodyS, isArrow)) =>
         val oldEnv = (env, labEnv)
         val newProp = newPropId(name)
         val newName = newProp.id
         val result = SetProp(info, newProp,
-          functional(i, info.span, newName, params, fds, vds, body, bodyS))
+          functional(i, info.span, newName, params, fds, vds, body, bodyS, isArrow))
         setEnv(oldEnv)
         result
       case _ =>

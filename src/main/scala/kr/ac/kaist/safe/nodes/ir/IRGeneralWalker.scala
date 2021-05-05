@@ -115,7 +115,7 @@ trait IRGeneralWalker[Result] {
   }
 
   def walk(node: IRFunctional): Result = node match {
-    case IRFunctional(ast, isFromSource, name, params, args, fds, vds, body) =>
+    case IRFunctional(ast, isFromSource, name, params, args, fds, vds, body, _) =>
       join(walk(ast) :: walk(name) ::
         (params.map(walk) ++ args.map(walk) ++ fds.map(walk) ++ vds.map(walk) ++ body.map(walk)): _*)
   }

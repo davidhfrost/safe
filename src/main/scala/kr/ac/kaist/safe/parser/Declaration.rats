@@ -100,7 +100,7 @@ FunDecl FunctionDeclaration =
        yyValue = new FunDecl(info,
                              new Functional(info, nilFds, nilVds,
                                             new Stmts(info, toList(a3._1()), a3._3()),
-                                            a1, ids, a3._2()), false);
+                                            a1, ids, a3._2(), false), false);
      };
 
 /*
@@ -150,7 +150,7 @@ public LHS FunctionExpr =
        yyValue = new FunExpr(info,
                              new Functional(info, nilFds, nilVds,
                                             new Stmts(info, toList(a3._1()), a3._3()),
-                                            f, ids, a3._2()));
+                                            f, ids, a3._2(), false));
      };
 
 
@@ -170,12 +170,13 @@ public LHS ArrowFunction =
            yyValue = new FunExpr(info,
                                  new Functional(info, nilFds, nilVds,
                                                 new Stmts(info, toList(a3._1()), a3._3()),
-                                                f, ids, a3._2()));
+                                                f, ids, a3._2(),
+                                                true));
     };
 
 private Tuple3<List<Stmt>, String, Boolean> ConciseBody =
     FunctionBody
-  / !(opencurly) &(a1:Assignment) Statement
+  / &(a1:Assignment) Statement
      {  Span span = createSpan(yyStart,yyCount);
         Stmt returnStmt = new Return(NodeUtil.makeASTNodeInfo(span), Some.<Expr>apply(a1));
         String str = NodeUtil.prBody(toList(list(returnStmt)));

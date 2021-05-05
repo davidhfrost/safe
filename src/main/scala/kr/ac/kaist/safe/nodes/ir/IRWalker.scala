@@ -99,9 +99,9 @@ trait IRWalker {
   }
 
   def walk(node: IRFunctional): IRFunctional = node match {
-    case IRFunctional(ast, isFromSource, name, params, args, fds, vds, body) =>
+    case IRFunctional(ast, isFromSource, name, params, args, fds, vds, body, isArrow) =>
       IRFunctional(ast, isFromSource, walk(name), params.map(walk),
-        args.map(walk), fds.map(walk), vds.map(walk), body.map(walk))
+        args.map(walk), fds.map(walk), vds.map(walk), body.map(walk), isArrow)
   }
 
   def walk(node: IROp): IROp = node match {

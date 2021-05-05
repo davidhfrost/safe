@@ -24,13 +24,16 @@ case class IRFunctional(
     args: List[IRStmt],
     fds: List[IRFunDecl],
     vds: List[IRVarStmt],
-    body: List[IRStmt]
+    body: List[IRStmt],
+    isArrow: Boolean
 ) extends IRNode(ast) {
   override def toString(indent: Int): String = {
     val s: StringBuilder = new StringBuilder
     s.append(name.toString(indent)).append("(")
     s.append(NodeUtil.join(indent, params, ", ", new StringBuilder("")))
-    s.append(") ").append(LINE_SEP).append(NodeUtil.getIndent(indent)).append("{").append(LINE_SEP)
+    s.append(") ")
+    s.append(if (isArrow) " => " else "")
+    s.append(LINE_SEP).append(NodeUtil.getIndent(indent)).append("{").append(LINE_SEP)
     s.append(NodeUtil.getIndent(indent + 1))
     s.append(NodeUtil.join(indent + 1, fds ++ vds ++ args ++ body, LINE_SEP + NodeUtil.getIndent(indent + 1), new StringBuilder("")))
     s.append(LINE_SEP).append(NodeUtil.getIndent(indent)).append("}")

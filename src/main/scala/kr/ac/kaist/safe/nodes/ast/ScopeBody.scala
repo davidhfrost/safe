@@ -46,7 +46,8 @@ case class Functional(
     stmts: Stmts,
     name: Id,
     params: List[Id],
-    body: String
+    body: String,
+    isArrow: Boolean
 ) extends ScopeBody {
   override def toString(indent: Int): String = {
     val s: StringBuilder = new StringBuilder
@@ -54,6 +55,7 @@ case class Functional(
       .append("(")
       .append(NU.join(indent, params, ", ", new StringBuilder("")))
       .append(") ")
+      .append(if (isArrow) " => " else "")
       .append(LINE_SEP)
       .append(NU.getIndent(indent))
       .append("{")
