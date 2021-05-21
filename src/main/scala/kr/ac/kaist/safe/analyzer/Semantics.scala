@@ -186,19 +186,23 @@ case class Semantics(
     }
   }
 
+  // C = "control point".
+  // apply the transfer function of the control point `cp` to the abstract state `st`.
   def C(cp: ControlPoint, st: AbsState): (AbsState, AbsState) = {
     if (st.isBottom) (AbsState.Bot, AbsState.Bot)
     else {
-      val h = st.heap
       val ctx = st.context
       val allocs = st.allocs
       cp.block match {
+        // a block denoting the entry into a new function
         case Entry(_) => {
           val fun = cp.block.func
           val xArgVars = fun.argVars
           val xLocalVars = fun.localVars
           val localEnv = ctx.pureLocal
           val (argV, _) = localEnv.record.decEnvRec.GetBindingValue(fun.argumentsName)
+
+          // bind argument values to their names in the function scope
           val (nSt, _) = xArgVars.foldLeft((st, 0))((res, x) => {
             val (iSt, i) = res
             val vi = argV.locset.foldLeft(AbsValue.Bot)((vk, lArg) => {
@@ -209,6 +213,8 @@ case class Semantics(
               vi
             ), i + 1)
           })
+
+          // bind declared local variable names to `undefined`
           val newSt = xLocalVars.foldLeft(nSt)((jSt, x) => {
             val undefV = AbsValue(Undef)
             jSt.createMutableBinding(x, undefV)
@@ -229,6 +235,10 @@ case class Semantics(
     }
   }
 
+  // I = "instruction"
+  // apply the transfer function of the normal instruction `i` in the control point `cp`
+  // to the abstract state/exception state `(st, excSt)`.
+  // results in a new abstract state/exception state pair.
   def I(cp: ControlPoint, i: CFGNormalInst, st: AbsState, excSt: AbsState): (AbsState, AbsState) = {
     val tp = cp.tracePartition
     i match {
@@ -498,7 +508,7 @@ case class Semantics(
     case _ => None
   }
 
-  // internal API call
+  // internal SAFE API call
   // CFGInternalCall(ir, _, lhs, name, arguments, loc)
   def IC(
     cp: ControlPoint, ir: IRNode, lhs: CFGId, name: String, args: List[CFGExpr],
@@ -1445,10 +1455,14 @@ case class Semantics(
     }
   }
 
+  // call instruction
   def CI(cp: ControlPoint, i: CFGCallInst, st: AbsState, excSt: AbsState): (AbsState, AbsState) = {
     val (_, _, s, e) = internalCI(cp, i, st, excSt)
     (s, e)
   }
+
+  // internal call instruction.
+  // returns (value of this, value of args, exit state, exit exception state)
   def internalCI(cp: ControlPoint, i: CFGCallInst, st: AbsState, excSt: AbsState): (AbsValue, AbsValue, AbsState, AbsState) = {
     // cons, thisArg and arguments must not be bottom
     val tp = cp.tracePartition

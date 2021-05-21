@@ -149,7 +149,7 @@ class DefaultCFGBuilder(
       val argumentsName: String = id2cfgId(params(1)).toString
       val nameStr: String = name.originalName
 
-      val newFunc: CFGFunction = cfg.createFunction(argumentsName, argVars, localVars, nameStr, functional, true)
+      val newFunc: CFGFunction = cfg.createFunction(argumentsName, argVars, localVars, nameStr, functional, true, isArrow)
       val oldFunc: CFGFunction = currentFunc
       currentFunc = newFunc
 

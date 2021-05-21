@@ -22,7 +22,8 @@ case class CFGFunction(
     argVars: List[CFGId],
     localVars: List[CFGId],
     name: String,
-    isUser: Boolean
+    isUser: Boolean,
+    isArrow: Boolean
 ) extends CFGNode {
   var id: FunctionId = 0 // XXX should be a value but for JS model for a while.
 
