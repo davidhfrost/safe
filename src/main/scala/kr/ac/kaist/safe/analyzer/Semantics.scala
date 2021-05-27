@@ -201,7 +201,6 @@ case class Semantics(
           val xLocalVars = fun.localVars
           val localEnv = ctx.pureLocal
           val (argV, _) = localEnv.record.decEnvRec.GetBindingValue(fun.argumentsName)
-
           // bind argument values to their names in the function scope
           val (nSt, _) = xArgVars.foldLeft((st, 0))((res, x) => {
             val (iSt, i) = res
@@ -1317,18 +1316,37 @@ case class Semantics(
         val newExcSt = st.raiseException(excSet)
         (st1, excSt ⊔ newExcSt)
       }
-      case (NodeUtil.INTERNAL_BOUND_THIS, List(exprO, exprP), None) => {
-        val (v, excSetO) = V(exprO, st)
-        val (p, excSetP) = V(exprP, st)
-        val newH = v.locset.foldLeft(st.heap) {
+
+      // @BoundThis(func, thisArg)
+      case (NodeUtil.INTERNAL_BOUND_THIS, List(funcExpr, thisExpr), None) => {
+        // the two arguments to @BoundThis can only be assumed to be expressions, rather than single values.
+        // so first, we simplify these expressions down to single values using the `V` method.
+        // note that we potentially run into exceptions while doing this, which are also returned by `V`.
+        val (funcVal, funcExcSet) = V(funcExpr, st)
+        val (thisVal, thisExcSet) = V(thisExpr, st)
+
+        // for each possible heap location of the `funcVal`:
+        val newH = funcVal.locset.foldLeft(st.heap) {
           case (h, loc) => {
+            // read the object at that heap location
             val obj = st.heap.get(loc)
-            val newObj = obj.update(IBoundThis, AbsIValue(p))
+            // update its [[BoundThis]] internal property to `thisVal`
+            val newObj = obj.update(IBoundThis, AbsIValue(thisVal))
+            // write the updated object back to the heap in the same location
             h.update(loc, newObj)
           }
         }
-        val newSt = st.copy(heap = newH).varStore(lhs, p)
-        val newExcSt = st.raiseException(excSetO ++ excSetP)
+        val newSt = st
+          // write the updated heap into the program state
+          .copy(heap = newH)
+          // write the `thisVal` to the "left-hand side" of the function call
+          // (this is equivalent to its return value)
+          // even if the return value isn't used by the program under analysis,
+          // the way that SAFE's CFG works means it makes sense to save it anyway.
+          .varStore(lhs, thisVal)
+
+        // raise the possible exceptions created by this function call
+        val newExcSt = st.raiseException(funcExcSet ++ thisExcSet)
         (newSt, excSt ⊔ newExcSt)
       }
       case (NodeUtil.INTERNAL_BOUND_THIS, List(expr), None) => {
@@ -1561,6 +1579,8 @@ case class Semantics(
     }
   }
 
+  // compute the abstract value of `expr` in the abstract state `st`.
+  // returns a value and a set of possible exceptions occurring during computation.
   def V(expr: CFGExpr, st: AbsState): (AbsValue, Set[Exception]) = expr match {
     case CFGVarRef(ir, id) => st.lookup(id)
     case CFGLoad(ir, obj, index) => {
@@ -1679,6 +1699,7 @@ case class Semantics(
       (AbsValue(pvalue), ExcSetEmpty)
   }
 
+  // throws an exception unless `expr` is truthy in `st`, as in an `assert` statement.
   def B(expr: CFGExpr, st: AbsState, excSt: AbsState): (AbsState, AbsState) = {
     val st1 = st //TODO should be the pruned state
 

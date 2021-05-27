@@ -186,7 +186,7 @@ package object domain {
   lazy val AbsDesc: DefaultDesc.type = DefaultDesc
   type AbsDesc = DefaultDesc.Elem
 
-  // absent value for parital map
+  // absent value for partial map
   object AbsAbsent extends SimpleDomain[None.type]
   type AbsAbsent = AbsAbsent.Elem
 

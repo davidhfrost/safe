@@ -37,12 +37,14 @@ object DefaultEnvRec extends EnvRecDomain {
 
     def getSingle: ConSingle[EnvRec] = ConMany // TODO more precise
 
+    // comparison induced by components
     def ⊑(that: Elem): Boolean = {
       val right = that
       this.decEnvRec ⊑ right.decEnvRec &&
         this.globalEnvRec ⊑ right.globalEnvRec
     }
 
+    // join induced by components
     def ⊔(that: Elem): Elem = {
       val right = that
       Elem(
@@ -51,6 +53,7 @@ object DefaultEnvRec extends EnvRecDomain {
       )
     }
 
+    // meet induced by components
     def ⊓(that: Elem): Elem = {
       val right = that
       Elem(

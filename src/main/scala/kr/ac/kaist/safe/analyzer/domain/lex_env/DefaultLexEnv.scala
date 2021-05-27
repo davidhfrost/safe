@@ -16,6 +16,10 @@ import kr.ac.kaist.safe.util._
 import kr.ac.kaist.safe.LINE_SEP
 
 // default lexical environment abstract domain
+// 10.2
+// A Lexical Environment consists of:
+//   - record: an Environment Record
+//   - outer: a possibly null reference to an outer Lexical Environment.
 object DefaultLexEnv extends LexEnvDomain {
   lazy val Bot = Elem(AbsEnvRec.Bot, LocSet.Bot, AbsAbsent.Bot)
   lazy val Top = Elem(AbsEnvRec.Top, LocSet.Top, AbsAbsent.Top)
@@ -47,6 +51,7 @@ object DefaultLexEnv extends LexEnvDomain {
         this.nullOuter ⊑ right.nullOuter
     }
 
+    // join is induced by the join on each component.
     def ⊔(that: Elem): Elem = {
       val right = that
       Elem(
@@ -56,6 +61,7 @@ object DefaultLexEnv extends LexEnvDomain {
       )
     }
 
+    // meet is induced by the meet on each component.
     def ⊓(that: Elem): Elem = {
       val right = that
       Elem(
@@ -75,18 +81,23 @@ object DefaultLexEnv extends LexEnvDomain {
       s.toString
     }
 
+    // create a shallow copy of this lexical environment
     def copy(
       record: AbsEnvRec = this.record,
       outer: LocSet = this.outer,
       nullOuter: AbsAbsent = this.nullOuter
     ): Elem = Elem(record, outer, nullOuter)
 
+    // substitute the location `from` with the location `to` in both:
+    // - this lexical environment's envrec, and
+    // - the outer lexical environment.
     def subsLoc(from: Loc, to: Loc): Elem =
       Elem(record.subsLoc(from, to), outer.subsLoc(from, to), nullOuter)
 
     def weakSubsLoc(from: Loc, to: Loc): Elem =
       Elem(record.weakSubsLoc(from, to), outer.subsLoc(from, to), nullOuter)
 
+    // remove the input list of locations from both this envrec and the outer lexenv.
     def remove(locs: Set[Loc]): Elem =
       Elem(record.remove(locs), outer.remove(locs), nullOuter)
   }
