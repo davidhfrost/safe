@@ -1136,6 +1136,8 @@ class Translator(program: Program) {
             Some(mkExprS(e, res, obj)))
         ), res)
 
+    // a function application whose callee is an internal call
+    // e.g. `@BoundThis(F, this)`
     case FunApp(_, VarRef(_, Id(_, fun, _, _)), args) if (NU.isInternalCall(fun)) =>
       val newArgs = args.zipWithIndex.map {
         case (arg, index) => freshId(arg, arg.span, "new" + index)
@@ -1148,15 +1150,26 @@ class Translator(program: Program) {
       }
       (ss :+ IRInternalCall(e, res, fun, irArgs), res)
 
+    // a function application whose callee is the built-in JS function `eval`
+    // e.g. `eval(arg)`
     case FunApp(_, fun, List(arg)) if (fun.isEval) =>
       val newone = freshId(arg, arg.span, "new1")
       val (ss, r) = walkExpr(arg, env, newone)
       (ss :+ IREval(e, res, r), res)
 
+    // a function application whose callee is a parenthesized expression `e`
+    // e.g. `(e)(args)`
     case FunApp(info, Parenthesized(_, e), args) if e.isInstanceOf[LHS] =>
+      // unwrap one layer of parentheses around the expression `e` and
+      // recurse back into this function (`walkExpr`)
       walkExpr(FunApp(info, e.asInstanceOf[LHS], args), env, res)
 
+    // a function application whose callee is a dotted property access
+    // e.g. `obj.member(args)`
     case FunApp(info, dot @ Dot(i, obj, member), args) =>
+      // recurse back into `walkExpr`, reducing the dotted property access case
+      // to the bracketed property access case.
+      // (i.e. rewriting `obj.member(args)` as `obj['member'](args)`).
       walkExpr(
         FunApp(
           info,
@@ -1170,6 +1183,8 @@ class Translator(program: Program) {
         env, res
       )
 
+    // a function application whose callee is an identifier `fid`:
+    // i.e. `fid(...args)`
     case FunApp(_, v @ VarRef(_, fid), args) =>
       val fspan = v.span
       val obj = freshId(v, fspan, "obj")
@@ -1192,6 +1207,8 @@ class Translator(program: Program) {
           IRCall(e, res, obj, fun, arg)
         ), res)
 
+    // a function application whose callee is a property access
+    // i.e. `first[index](...args)` or `first.index(...args)`
     case FunApp(_, b @ Bracket(i, first, index), args) =>
       val firstspan = first.span
       val objspan = i.span
@@ -1218,6 +1235,9 @@ class Translator(program: Program) {
           IRCall(e, res, fun, obj, arg)
         ), res)
 
+    // remaining types of function applications not covered by the previous two cases.
+    // one example is an IIFE (immediately invoked function expression)
+    // i.e. `(function() { ... })()`
     case FunApp(_, fun, args) =>
       val fspan = fun.span
       val obj1 = freshId(fun, fspan, "obj1")
@@ -1232,10 +1252,12 @@ class Translator(program: Program) {
           walkExpr(arg, env, newargs.apply(index))
         )
       }
+
       ((ss :+ toObject(fun, obj, r)) ++
         results.foldLeft(List[IRStmt]()) { case (l, (arg, (stmts, expr))) => l ++ stmts :+ (mkExprS(e, arg, expr)) } ++
         List(
           IRArgs(e, arg, newargs.map(p => Some(p))),
+          // here the call statement is created with `GLOBAL_TMP_ID` as the value of `this`
           IRCall(e, res, obj, GLOBAL_TMP_ID, arg)
         ), res)
 

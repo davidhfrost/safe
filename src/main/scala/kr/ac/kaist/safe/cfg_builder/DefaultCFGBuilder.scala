@@ -438,7 +438,11 @@ class DefaultCFGBuilder(
         tailBlock.createInst(CFGEnterCode(stmt, _, thisId, id2cfgExpr(thisB)))
         val ref = CFGVarRef(stmt, thisId)
         val f = tailBlock.func
-        val call = f.createCall(CFGCall(stmt, _, id2cfgExpr(fun), ref, id2cfgExpr(args), newASite), id2cfgId(lhs), currentLoop)
+        val call = f.createCall(
+          CFGCall(stmt, _, id2cfgExpr(fun), ref, id2cfgExpr(args), newASite),
+          id2cfgId(lhs),
+          currentLoop
+        )
         cfg.addEdge(tailBlock, call)
 
         (

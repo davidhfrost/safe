@@ -135,13 +135,15 @@ object DefaultState extends StateDomain {
 
     def lookupBase(id: CFGId): AbsValue = {
       val x = id.text
-      id.kind match {
+      val baseValue: AbsValue = id.kind match {
         case PureLocalVar => LocSet(PURE_LOCAL)
         case CapturedVar =>
           AbsLexEnv.getIdBase(context.pureLocal.outer, x, false)(this)
         case CapturedCatchVar => LocSet(COLLAPSED)
         case GlobalVar => LocSet(GLOBAL_LOC)
       }
+      println("lookupBase value: " + baseValue)
+      baseValue
     }
 
     ////////////////////////////////////////////////////////////////

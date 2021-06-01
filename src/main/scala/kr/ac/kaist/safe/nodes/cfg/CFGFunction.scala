@@ -60,6 +60,7 @@ case class CFGFunction(
   }
 
   // create call
+  // `retVar`: the LHS variable receiving the return value of the call (e.g. the `x` in `x = f();`)
   def createCall(callInstCons: Call => CFGCallInst, retVar: CFGId, outer: Option[LoopHead]): Call = {
     val call = Call(this, callInstCons, retVar)
     val afterCall = call.afterCall

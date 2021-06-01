@@ -278,6 +278,9 @@ case class Semantics(
         val newSt = st1.copy(heap = h2).varStore(x, AbsValue(loc))
         (newSt, excSt)
       }
+
+      // `x`: the identifier receiving the value of `this`
+      // `e`: the expression which holds the default value of `this` (global object or method receiver)
       case CFGEnterCode(_, _, x, e) => {
         val (v, excSet) = V(e, st)
         val thisVal = AbsValue(v.getThis(st.heap))
@@ -1473,7 +1476,8 @@ case class Semantics(
     }
   }
 
-  // call instruction
+  // external call instruction
+  // to be used by consumers of these semantics; not used during normal analysis pipeline
   def CI(cp: ControlPoint, i: CFGCallInst, st: AbsState, excSt: AbsState): (AbsState, AbsState) = {
     val (_, _, s, e) = internalCI(cp, i, st, excSt)
     (s, e)
@@ -1482,6 +1486,7 @@ case class Semantics(
   // internal call instruction.
   // returns (value of this, value of args, exit state, exit exception state)
   def internalCI(cp: ControlPoint, i: CFGCallInst, st: AbsState, excSt: AbsState): (AbsValue, AbsValue, AbsState, AbsState) = {
+    println("i.thisArg: " + i.thisArg)
     // cons, thisArg and arguments must not be bottom
     val tp = cp.tracePartition
     val loc = Loc(i.asite, tp)
