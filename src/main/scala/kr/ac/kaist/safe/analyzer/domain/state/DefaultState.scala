@@ -142,7 +142,6 @@ object DefaultState extends StateDomain {
         case CapturedCatchVar => LocSet(COLLAPSED)
         case GlobalVar => LocSet(GLOBAL_LOC)
       }
-      println("lookupBase value: " + baseValue)
       baseValue
     }
 

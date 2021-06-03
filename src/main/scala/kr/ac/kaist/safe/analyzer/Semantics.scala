@@ -98,6 +98,7 @@ case class Semantics(
   def getOutCtxtSet(block: CFGBlock): Set[LoopContext] =
     outCtxtMap.getOrElse(block, Set())
 
+  // a map
   type IPSucc = Map[ControlPoint, EdgeData]
   type IPSuccMap = Map[ControlPoint, IPSucc]
   private var ipSuccMap: IPSuccMap = Map()
@@ -120,10 +121,22 @@ case class Semantics(
     ipSuccMap += (cp1 -> updatedSuccMap)
   }
 
+  // handle an interprocedural edge, which occurs when control flow transitions from one function to another.
+  // the different ways in which this can happen are expressed as cases of this function's `match` statement.
+  // specifically, the function applies the transfer function of an interprocedural edge to the input state `st`,
+  // returning the outgoing state on the other side of the interprocedural edge.
   def E(cp1: ControlPoint, cp2: ControlPoint, data: EdgeData, st: AbsState): AbsState = {
     (cp1.block, cp2.block) match {
+      // case 1:
+      // calling the function `f`, inducing an edge from the `Call` block that calls `f`
+      // to the `Entry` block of `f` itself.
       case (_, Entry(f)) => st.context match {
+        // case 1.1:
+        // if the state's context is bottom, propagate that across the interprocedural edge.
         case _ if st.context.isBottom => AbsState.Bot
+
+        // case 1.2:
+        // entering a function, and the state has a nondegenerate context.
         case ctx1: AbsContext => {
           val objEnv = data.env.record.decEnvRec.GetBindingValue("@scope") match {
             case (value, _) => AbsLexEnv.NewDeclarativeEnvironment(value.locset)
@@ -137,7 +150,16 @@ case class Semantics(
             .setAllocLocSet(data.allocs)
         }
       }
+
+      // the remaining cases are induced by exiting (i.e. returning from) a function.
+
+      // case 2:
+      // if the state's context is bottom as we exit a function, propagate that across the interprocedural edge.
       case (Exit(_), _) if st.context.isBottom => AbsState.Bot
+
+      // case 3:
+      // a normal exit (i.e. where no exception is thrown) will return from the callee's `Exit` block to
+      // the caller's `AfterCall` block corresponding to the original `Call` block.
       case (Exit(f1), acall @ AfterCall(f2, retVar, call)) =>
         val call = acall.call
         val params = f1.argVars
@@ -158,8 +180,17 @@ case class Semantics(
             .setAllocLocSet(allocs2)
           newSt.varStore(retVar, returnV)
         }
+
+      // cases 4, 5:
+      // if we exit the function via a thrown exception and either the state's context or allocation set is bottom,
+      // propagate that across the interprocedural edge.
       case (ExitExc(_), _) if st.context.isBottom => AbsState.Bot
       case (ExitExc(_), _) if st.allocs.isBottom => AbsState.Bot
+
+      // case 6:
+      // we exit the callee `f1` via a thrown exception, and the state is nondegenerate.
+      // in this case, we return to the caller's `AfterCatch` block corresponding to the original `Call` block
+      // which called `f1`.
       case (ExitExc(f1), acatch @ AfterCatch(_, _)) =>
         val call = acatch.call
         val params = f1.argVars
@@ -188,6 +219,7 @@ case class Semantics(
 
   // C = "control point".
   // apply the transfer function of the control point `cp` to the abstract state `st`.
+  // returns a pair of outgoing normal and exception states.
   def C(cp: ControlPoint, st: AbsState): (AbsState, AbsState) = {
     if (st.isBottom) (AbsState.Bot, AbsState.Bot)
     else {
@@ -1483,21 +1515,36 @@ case class Semantics(
     (s, e)
   }
 
+  // bind a nonnull `name` to the input environment record.
+  // if the input `name` is null, return the original environment record.
+  def bindNonnullName(envRec: AbsDecEnvRec, name: String, value: AbsValue): AbsDecEnvRec = {
+    if (name == null) {
+      envRec
+    } else {
+      val (result, _) = envRec.CreateMutableBinding(name)
+        .SetMutableBinding(name, value)
+      result
+    }
+  }
+
   // internal call instruction.
   // returns (value of this, value of args, exit state, exit exception state)
   def internalCI(cp: ControlPoint, i: CFGCallInst, st: AbsState, excSt: AbsState): (AbsValue, AbsValue, AbsState, AbsState) = {
-    println("i.thisArg: " + i.thisArg)
     // cons, thisArg and arguments must not be bottom
     val tp = cp.tracePartition
     val loc = Loc(i.asite, tp)
     val st1 = st.alloc(loc)
     val (funVal, funExcSet) = V(i.fun, st1)
+    // compute the possible locations of functions being called based on the type of call instruction.
     val funLocSet = i match {
+      // if it's a constructor (i.e. called with `new`), only use locations which may contain a constructor.
       case (_: CFGConstruct) => funVal.locset.filter(l => AT ⊑ st1.heap.hasConstruct(l))
+      // if it's a normal function call, only use locations which may be callable.
       case (_: CFGCall) => funVal.locset.filter(l => AT ⊑ TypeConversionHelper.IsCallable(l, st1.heap))
     }
+
+    // compute the abstract values of `this` and `arguments`
     val (thisVal, _) = V(i.thisArg, st1)
-    // val thisVal = AbsValue(thisV.getThis(st.heap))
     val (argVal, _) = V(i.arguments, st1)
 
     // XXX: stop if thisArg or arguments is LocSetBot(ValueBot)
@@ -1511,7 +1558,10 @@ case class Semantics(
       val cpAfterCatch = ControlPoint(nCall.afterCatch, tp)
 
       // Draw call/return edges
+      // for each possible callee location:
       funLocSet.foreach((fLoc) => {
+        // compute the location's fidset based on the type of call instruction.
+        // (if a constructor call, use the fidset of constructors; if a normal call, use the fidset of callables)
         val funObj = st1.heap.get(fLoc)
         val fidSet = i match {
           case _: CFGConstruct =>
@@ -1519,17 +1569,20 @@ case class Semantics(
           case _: CFGCall =>
             funObj(ICall).fidset
         }
+        // for each possible fid:
         fidSet.foreach((fid) => {
+          // find the function associated to the fid in the CFG.
           cfg.getFunc(fid) match {
             case Some(funCFG) => {
               val scopeValue = funObj(IScope).value
+
+              // create a new local lexical environment for the callee
               val newEnv = AbsLexEnv.newPureLocal(LocSet(loc))
-              val (newRec, _) = newEnv.record.decEnvRec
-                .CreateMutableBinding(funCFG.argumentsName)
-                .SetMutableBinding(funCFG.argumentsName, argVal)
-              val (newRec2, _) = newRec
-                .CreateMutableBinding("@scope")
-                .SetMutableBinding("@scope", scopeValue)
+
+              // bind the `arguments` and `@scope` names to the callee's new lexical environment
+              val newRec = bindNonnullName(newEnv.record.decEnvRec, funCFG.argumentsName, argVal)
+              val newRec2 = bindNonnullName(newRec, "@scope", scopeValue)
+
               cp.next(funCFG.entry, CFGEdgeCall, this, st1).foreach(entryCP => {
                 val newTP = entryCP.tracePartition
                 val exitCP = ControlPoint(funCFG.exit, newTP)
@@ -1719,6 +1772,7 @@ case class Semantics(
 }
 
 // Interprocedural edges
+// an
 case class EdgeData(allocs: AllocLocSet, env: AbsLexEnv, thisBinding: AbsValue) {
   def ⊔(other: EdgeData): EdgeData = EdgeData(
     this.allocs ⊔ other.allocs,
@@ -1726,9 +1780,9 @@ case class EdgeData(allocs: AllocLocSet, env: AbsLexEnv, thisBinding: AbsValue) 
     this.thisBinding ⊔ other.thisBinding
   )
   def ⊑(other: EdgeData): Boolean = {
-    this.allocs ⊑ other.allocs &&
-      this.env ⊑ other.env &&
-      this.thisBinding ⊑ other.thisBinding
+    (this.allocs ⊑ other.allocs) &&
+      (this.env ⊑ other.env) &&
+      (this.thisBinding ⊑ other.thisBinding)
   }
 
   def subsLoc(from: Loc, to: Loc): EdgeData = EdgeData(
@@ -1765,4 +1819,8 @@ object EdgeData {
 }
 
 // call infomation
-case class CallInfo(state: AbsState, thisVal: AbsValue, argVal: AbsValue)
+case class CallInfo(state: AbsState, thisVal: AbsValue, argVal: AbsValue) {
+  override def toString: String = {
+    s"this: ${thisVal}, args: ${argVal}"
+  }
+}
