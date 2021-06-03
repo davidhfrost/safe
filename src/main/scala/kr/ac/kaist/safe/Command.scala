@@ -35,8 +35,6 @@ class CommandObj[Result](
     args: List[String],
     testMode: Boolean = false
   ): Try[Result] = {
-    println("Phase pipeline: " + pList)
-
     val safeConfig = SafeConfig(this, testMode = testMode)
     val parser = new ArgParser(this, safeConfig)
     val modePattern = "--(.+)".r
