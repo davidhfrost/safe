@@ -33,6 +33,12 @@ sealed trait Sensitivity {
 
 // trace partition
 trait TracePartition {
+  // the `next` method describes how trace partition tokens change across CFG edges.
+  // that is, suppose we have:
+  //   - a trace partition token `tp` at a CFG block `from` (yielding a control point),
+  //   - an edge in the CFG between blocks `from` and `to`.
+  // then `tp.next` gives the trace partition tokens at the node `to` for which
+  // the program state at the control point `(from, tp)` should be propagated into.
   def next(
     from: CFGBlock,
     to: CFGBlock,
@@ -163,6 +169,9 @@ case class CallSiteSensitivity(depth: Int) extends Sensitivity {
 ////////////////////////////////////////////////////////////////////////////////
 // loop sensitivity (unrolling)
 ////////////////////////////////////////////////////////////////////////////////
+
+// data which characterizes a specific iteration in a specific loop
+// (the "head" of a loop is its entry point)
 case class LoopIter(
   head: LoopHead,
   iter: Int

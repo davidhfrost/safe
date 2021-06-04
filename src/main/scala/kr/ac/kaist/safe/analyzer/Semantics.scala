@@ -63,8 +63,11 @@ case class Semantics(
       .getOrElse(tp, CallInfo(AbsState.Bot, AbsValue.Bot, AbsValue.Bot))
   }
 
-  // control point maps to state
-  // CFGBlock -> TracePartition -> AbsState
+  // each "block" of the CFG corresponds a section of code that will execute linearly.
+  // for each such block, the analysis maintains a different program state for each trace partition token
+  // it encounters at that block.
+  // the `cpToState` map thus records all such program states, parameterized by each state's `CFGBlock` and
+  // `TracePartition` token.
   private val cpToState: MMap[CFGBlock, MMap[TracePartition, AbsState]] = MMap()
 
   def getState(block: CFGBlock): Map[TracePartition, AbsState] =
@@ -98,7 +101,9 @@ case class Semantics(
   def getOutCtxtSet(block: CFGBlock): Set[LoopContext] =
     outCtxtMap.getOrElse(block, Set())
 
-  // a map
+  // for each interprocedural edge between two control points,
+  // we record `EdgeData` that represents a "context switch" from the
+  // caller function's context to the callee function's context.
   type IPSucc = Map[ControlPoint, EdgeData]
   type IPSuccMap = Map[ControlPoint, IPSucc]
   private var ipSuccMap: IPSuccMap = Map()
@@ -1772,7 +1777,6 @@ case class Semantics(
 }
 
 // Interprocedural edges
-// an
 case class EdgeData(allocs: AllocLocSet, env: AbsLexEnv, thisBinding: AbsValue) {
   def ⊔(other: EdgeData): EdgeData = EdgeData(
     this.allocs ⊔ other.allocs,
