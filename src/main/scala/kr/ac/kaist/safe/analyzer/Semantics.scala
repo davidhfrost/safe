@@ -109,6 +109,8 @@ case class Semantics(
   private var ipSuccMap: IPSuccMap = Map()
   def getAllIPSucc: IPSuccMap = ipSuccMap
   def setAllIPSucc(newMap: IPSuccMap): Unit = { ipSuccMap = newMap }
+
+  // gets all outward interprocedural edges from the input control point `cp`
   def getInterProcSucc(cp: ControlPoint): Option[IPSucc] = ipSuccMap.get(cp)
 
   // Adds inter-procedural call edge from call-block cp1 to entry-block cp2.

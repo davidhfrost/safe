@@ -120,22 +120,34 @@ class Fixpoint(
     // Propagate along inter-procedural edges
     // This step must be performed after evaluating abstract transfer function
     // because 'call' instruction can add inter-procedural edges.
+
+    // retrieve all interprocedural edges starting from `cp`.
     semantics.getInterProcSucc(cp) match {
       case None => ()
       case Some(succMap) => {
         succMap.foreach {
+          // for each interprocedural edge from `cp` to `succCP`:
           case (succCP, data) => {
+            // read the current state at `succCP`
             val oldSt = semantics.getState(succCP)
+            // compute the newly propagated state across the current interprocedural edge
             val nextSt2 = semantics.E(cp, succCP, data, nextSt)
             succCP.block match {
               case Entry(f) =>
+                // if `succCP` is an entry block `Entry(f)`, then:
+                //   - `cp` is a `Call` block, and
+                //   - the edge from `cp` to `succCP` represents calling the function `f`.
+
+                // in this case, add the control points corresponding to the exit points of `f` to the worklist queue.
                 val tp = succCP.tracePartition
                 val exitCP = ControlPoint(f.exit, tp)
                 val exitExcCP = ControlPoint(f.exitExc, tp)
                 if (!semantics.getState(exitCP).isBottom) worklist.add(exitCP)
                 if (!semantics.getState(exitExcCP).isBottom) worklist.add(exitExcCP)
-              case _ =>
+              case _ => ()
             }
+
+            // join the successor's current state with its newly computed state.
             if (!(nextSt2 ⊑ oldSt)) {
               val newSt = oldSt ⊔ nextSt2
               semantics.setState(succCP, newSt)
