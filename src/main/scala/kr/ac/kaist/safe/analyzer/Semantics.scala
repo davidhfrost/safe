@@ -225,31 +225,51 @@ case class Semantics(
   }
 
   // C = "control point".
-  // apply the transfer function of the control point `cp` to the abstract state `st`.
+  // apply the transfer function of the control point `cp` to the incoming abstract state `st`.
   // returns a pair of outgoing normal and exception states.
   def C(cp: ControlPoint, st: AbsState): (AbsState, AbsState) = {
+    // if the incoming state is bottom, then so are the outgoing states.
     if (st.isBottom) (AbsState.Bot, AbsState.Bot)
     else {
       val ctx = st.context
       val allocs = st.allocs
       cp.block match {
-        // a block denoting the entry into a new function
+        // case 1: an `Entry` block denoting the endpoint of an interprocedural edge.
         case Entry(_) => {
+          // the `CFGFunction` containing this `Entry` control point
           val fun = cp.block.func
+          // list of argument names
           val xArgVars = fun.argVars
+          // list of locally declared variable names
           val xLocalVars = fun.localVars
+          // the local lexical environment of this function
           val localEnv = ctx.pureLocal
+          // the abstract value of the `arguments` array
           val (argV, _) = localEnv.record.decEnvRec.GetBindingValue(fun.argumentsName)
-          // bind argument values to their names in the function scope
-          val (nSt, _) = xArgVars.foldLeft((st, 0))((res, x) => {
-            val (iSt, i) = res
-            val vi = argV.locset.foldLeft(AbsValue.Bot)((vk, lArg) => {
-              vk ⊔ iSt.heap.get(lArg).Get(i.toString, iSt.heap)
+          println("argV: " + argV)
+
+          // bind argument values to their names in the function scope, one at a time.
+          // each time we bind a new argument, we get an intermediate state `iSt`.
+          // after binding every argument, we end up with the final state `nSt`.
+          val (nSt, _) = xArgVars.foldLeft((st, 0))((result, iArgId) => {
+            // within this iteration:
+            //   - `i` is the index of the next argument we're going to bind.
+            //   - `iSt` is the intermediate state which incorporates all argument bindings we've made so far.
+            val (iSt, i) = result
+
+            // compute the abstract value of the ith argument by joining its abstract value
+            // in all possible `arguments` arrays.
+            // start by folding over the possible locations of `arguments`:
+            val iArgValue = argV.locset.foldLeft(AbsValue.Bot)((vk, argumentsLoc) => {
+              // first, retrieve the object at that location from the heap: `iSt.heap.get(argumentsLoc)`.
+              // then from that object retrieve the value at key `i`.
+              vk ⊔ iSt.heap.get(argumentsLoc).Get(i.toString, iSt.heap)
             })
-            (iSt.createMutableBinding(
-              x,
-              vi
-            ), i + 1)
+
+            // update the intermediate state `iSt` by binding the i-th argument identifier
+            // to its previously computed abstract value.
+            // this is also where we increment the argument index `i`.
+            (iSt.createMutableBinding(iArgId, iArgValue), i + 1)
           })
 
           // bind declared local variable names to `undefined`
@@ -257,26 +277,55 @@ case class Semantics(
             val undefV = AbsValue(Undef)
             jSt.createMutableBinding(x, undefV)
           })
+
+          // return the final state with all bindings applied.
           (newSt, AbsState.Bot)
         }
+
+        // case 2: a `Call` block, denoting the starting point of an interprocedural edge.
         case (call: Call) =>
+          // the transfer function for a `Call` block is implemented in `internalCI`.
+          // from that method, we return the outgoing normal and exceptional states,
+          // as well as the value of `this` (`thisVal`) and `arguments` (`argVal`).
           val (thisVal, argVal, resSt, resExcSt) = internalCI(cp, call.callInst, st, AbsState.Bot)
+
+          // cache this data in the `CallInfo` map
           setCallInfo(call, cp.tracePartition, CallInfo(resSt, thisVal, argVal))
+
+          // return the states computed by `internalCI`.
           (resSt, resExcSt)
+
+        // case 3: a `NormalBlock` block, which covers all other blocks that affect the program state.
+        // (in particular, these are intraprocedural, which means they don't cross between two functions.)
+
+        // in this case, the transfer function of the entire block is the composition of the
+        // transfer functions of each of the block's individual instructions.
         case block: NormalBlock =>
+          // fold over each instruction in the block.
+          // NOTE that we're doing a `foldRight` here, which means iterating over the instruction list in reverse order.
+          // apparently, the instruction list is just stored like that (with the first element being the final instruction
+          // and the last element being the first instruction).
           block.getInsts.foldRight((st, AbsState.Bot))((inst, states) => {
+            // retrieve the states computed by the previous iteration
             val (oldSt, oldExcSt) = states
+
+            // run the next instruction's transfer function on those states.
+            // the method `I` returns the (normal state, exceptional state) pair, which agrees with
+            // the result of this fold, so we can directly return the call to `I`.
             I(cp, inst, oldSt, oldExcSt)
           })
+
+        // case 4: for all other block types, pass through the original state `st` unchanged.
+        // this indicates that executing one of these blocks doesn't affect the program state.
         case _ => (st, AbsState.Bot)
       }
     }
   }
 
-  // I = "instruction"
+  // `I` is short for "instruction".
   // apply the transfer function of the normal instruction `i` in the control point `cp`
-  // to the abstract state/exception state `(st, excSt)`.
-  // results in a new abstract state/exception state pair.
+  // to the normal and exceptional states `(st, excSt)`.
+  // returns the resulting outgoing normal and exceptional states as a pair.
   def I(cp: ControlPoint, i: CFGNormalInst, st: AbsState, excSt: AbsState): (AbsState, AbsState) = {
     val tp = cp.tracePartition
     i match {
@@ -329,6 +378,7 @@ case class Semantics(
         val newExcSt = st.raiseException(excSet)
         (st1, excSt ⊔ newExcSt)
       }
+
       case CFGExprStmt(_, _, x, e) => {
         val (v, excSet) = V(e, st)
         val st1 =

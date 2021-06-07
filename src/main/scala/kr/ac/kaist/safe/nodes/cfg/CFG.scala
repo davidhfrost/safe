@@ -62,7 +62,7 @@ case class CFG(
     isArrow: Boolean
   ): CFGFunction = {
     val func: CFGFunction =
-      CFGFunction(ir, if (isArrow) null else argumentsName, argVars, localVars, name, isUser, isArrow)
+      CFGFunction(ir, argumentsName, argVars, localVars, name, isUser, isArrow)
     func.id = getFId
     fidCount += 1
     funcs ::= func
