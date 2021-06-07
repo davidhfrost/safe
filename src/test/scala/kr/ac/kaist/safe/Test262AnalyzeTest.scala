@@ -18,5 +18,6 @@ import org.scalatest._
 class Test262AnalyzeTest extends AnalyzeTest {
   // registration
   val test262TestDir = testDir + "test262"
+
   analyzeHelper("Test262Analyze", List(test262TestDir))
 }

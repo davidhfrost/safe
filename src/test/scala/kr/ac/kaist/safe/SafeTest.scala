@@ -21,7 +21,7 @@ abstract class SafeTest extends FunSuite {
   // tests directory
   lazy val testDir = BASE_DIR + SEP + "tests" + SEP
 
-  // safe configuration
+  // skeleton safe configuration for tests.
   lazy val safeConfig: SafeConfig = SafeConfig(
     command = CmdBase,
     fileNames = Nil,
