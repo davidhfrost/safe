@@ -245,6 +245,10 @@ case class CFGInternalCall(
 /**
  * CFG Call Instruction
  */
+// an interface for either:
+//   - a function call instruction, or
+//   - a constructor call instruction (a function called using the `new` keyword).
+// this is always the *sole instruction* in a `Call` block.
 sealed trait CFGCallInst extends CFGInst {
   val block: Call
   val fun: CFGExpr
@@ -253,19 +257,20 @@ sealed trait CFGCallInst extends CFGInst {
   var asite: AllocSite // XXX should be a value but for JS model for a while.
 }
 
-// call(e1, e2, e3)
+// an instruction which calls a function
 case class CFGCall(
     ir: IRNode,
-    block: Call,
-    fun: CFGExpr,
-    thisArg: CFGExpr,
-    arguments: CFGExpr,
+    block: Call, // the `Call` block containing this instruction. (note that `Call` blocks only have one instruction)
+    fun: CFGExpr, // the function being called. (specifically, an expression which evaluates to that function)
+    thisArg: CFGExpr, // the `this` value of the call.
+    arguments: CFGExpr, // the `arguments` array of the call.
     var asite: AllocSite // XXX should be a value but for JS model for a while.
 ) extends CFGCallInst {
   override def toString: String = s"call($fun, $thisArg, $arguments) @ $asite"
 }
 
-// construct(e1, e2, e3)
+// an instruction which calls a function as a constructor (using the `new` keyword).
+// see `CFGCall` above; the arguments here have the same semantics.
 case class CFGConstruct(
     ir: IRNode,
     block: Call,

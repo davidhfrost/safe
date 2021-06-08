@@ -97,6 +97,7 @@ object DefaultValue extends ValueDomain {
     }
 
     def getThis(h: AbsHeap): LocSet = {
+      //
       val locSet1 = (pvalue.nullval.isBottom, pvalue.undefval.isBottom) match {
         case (true, true) => LocSet.Bot
         case _ => LocSet(GLOBAL_LOC)
@@ -107,6 +108,7 @@ object DefaultValue extends ValueDomain {
       val locSet2 =
         if (foundDeclEnvRecord) LocSet(GLOBAL_LOC)
         else LocSet.Bot
+
       val locSet3 = locset.foldLeft(LocSet.Bot)((tmpLocSet, loc) => {
         if (h.isObject(loc)) tmpLocSet + loc
         else tmpLocSet

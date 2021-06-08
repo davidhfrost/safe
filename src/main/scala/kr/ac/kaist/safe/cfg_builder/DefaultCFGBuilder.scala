@@ -194,7 +194,11 @@ class DefaultCFGBuilder(
   }
 
   /* stmt rule : IRStmt x CFGFunction x CFGBlock list x LabelMap -> CFGBlock list x LabelMap */
+  // `stmt`: the IR statement to be translated.
+  // `func`: the function containing this statement
+  // `blocks`: this *seems* to *always* be a list of exactly one block - the block containing `stmt`.
   private def translateStmt(stmt: IRStmt, func: CFGFunction, blocks: List[CFGBlock], lmap: LabelMap): (List[CFGBlock], LabelMap) = {
+    println(s"func: ${func}, lmap: ${lmap}")
     stmt match {
       case IRNoOp(_, desc) =>
         val tailBlock: NormalBlock = getTail(blocks, func)
@@ -388,7 +392,9 @@ class DefaultCFGBuilder(
         val key: String = label.uniqueName
         val bs: Set[CFGBlock] = lmap.getOrElse(NamedLabel(key), Set()) ++ blocks.toSet
         (Nil, lmap.updated(NamedLabel(key), bs))
+
       /* PEI : internal @Construct */
+      // internal constructor call to `@Construct` (identified by `NodeUtil.INTERNAL_CONSTRUCT`).
       case IRInternalCall(_, lhs, NodeUtil.INTERNAL_CONSTRUCT, fun :: thisId :: args :: Nil) =>
         val tailBlock: NormalBlock = getTail(blocks, func)
         val thisE = ir2cfgExpr(thisId)
@@ -401,7 +407,9 @@ class DefaultCFGBuilder(
           lmap.updated(ThrowLabel, (ThrowLabel of lmap) + call + tailBlock)
           .updated(AfterCatchLabel, (AfterCatchLabel of lmap) + call.afterCatch)
         )
+
       /* PEI : internal @Call */
+      // internal call to `@Call` (identified by `NodeUtil.INTERNAL_CALL`).
       case IRInternalCall(_, lhs, NodeUtil.INTERNAL_CALL, fun :: thisId :: args :: Nil) =>
         val tailBlock: NormalBlock = getTail(blocks, func)
         val thisE = ir2cfgExpr(thisId)
@@ -431,6 +439,8 @@ class DefaultCFGBuilder(
         val argList: List[CFGExpr] = args.map(ir2cfgExpr)
         tailBlock.createInst(CFGInternalCall(stmt, _, id2cfgId(lhs), name, argList, asite))
         (List(tailBlock), lm)
+
+      // a normal (non-internal) JS call.
       /* PEI : call, after-call */
       case IRCall(_, lhs, fun, thisB, args) =>
         val tailBlock: NormalBlock = getTail(blocks, func)
@@ -450,6 +460,8 @@ class DefaultCFGBuilder(
           lmap.updated(ThrowLabel, (ThrowLabel of lmap) + call + tailBlock)
           .updated(AfterCatchLabel, (AfterCatchLabel of lmap) + call.afterCatch)
         )
+
+      // a normal (non-internal) JS constructor call (using the `new` keyword).
       /* PEI : construct, after-call */
       case IRNew(_, lhs, cons, args) if (args.length == 2) =>
         val tailBlock: NormalBlock = getTail(blocks, func)
@@ -653,7 +665,12 @@ class DefaultCFGBuilder(
   // Helper
   ////////////////////////////////////////////////////////////////
 
-  // get tail block
+  // if `blocks` is a list a single block, returns that block.
+  // if `blocks` contains more than one block, it seems that this method is meant to:
+  //   - create a new "tail" block in `func`,
+  //   - add a CFG edge from each block in `blocks` to the new tail block.
+  // NOTE: `blocks` seems to *always* be a single element, even when analyzing a large source file like
+  //       jQuery 1.9.1. so it's not clear what the second case is designed for.
   private def getTail(blocks: List[CFGBlock], func: CFGFunction): NormalBlock = {
     blocks match {
       case Nil => func.createBlock(currentLoop)

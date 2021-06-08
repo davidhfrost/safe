@@ -18,10 +18,13 @@ import scala.collection.mutable.{ Map => MMap }
 import scala.reflect.ClassTag
 
 sealed trait CFGBlock {
+  // the function in the CFG which contains this block.
   val func: CFGFunction
   val id: BlockId
 
   // outer loop
+  // the innermost `LoopHead` block whose corresponding loop contains this block, if such a loop exists.
+  // (if no loop contains this block, `outerLoop == None`.
   var outerLoop: Option[LoopHead] = None
 
   def isOutBlock: Boolean = this match {
@@ -135,12 +138,22 @@ case class ExitExc(func: CFGFunction) extends CFGBlock {
 // call, after-call, after-catch
 case class Call(func: CFGFunction) extends CFGBlock {
   val id: BlockId = func.getBId
+
+  // the underscores here are a Scala idiom to explicitly declare
+  // that these values start at a "default uninitialized value".
+  // they're assigned actual values in the `apply` method defined below.
   private var iAfterCall: AfterCall = _
   private var iAfterCatch: AfterCatch = _
   private var iCallInst: CFGCallInst = _
+
   def afterCall: AfterCall = iAfterCall
   def afterCatch: AfterCatch = iAfterCatch
   def callInst: CFGCallInst = iCallInst
+
+  // note that the `CFGCallInst` member is the only instruction in the `Call` block.
+  // (we're always returning a list with a single element here.)
+  override def getInsts: List[CFGInst] = List(callInst)
+
   override def toString: String = s"Call[$id]"
   override def toString(indent: Int): String = {
     val pre = "  " * indent
@@ -151,9 +164,15 @@ case class Call(func: CFGFunction) extends CFGBlock {
     s.toString
   }
   def span: Span = callInst.span
-  override def getInsts: List[CFGInst] = List(callInst)
 }
+
 object Call {
+  // `func`: the function in the CFG that contains this call block.
+  // `callInstCons`: a function mapping this `Call` block to its call instruction.
+  //                 the resulting `CFGCallInst` is always the sole instruction in the block.
+  //                 in particular, `callInstCons` needs to encode the function being called.
+  // `retVar`: the identifier receiving the return value of this function call.
+  //           (e.g. the `x` in `x = f();`
   def apply(func: CFGFunction, callInstCons: Call => CFGCallInst, retVar: CFGId): Call = {
     val call = Call(func)
     call.iAfterCall = AfterCall(func, retVar, call)

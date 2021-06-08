@@ -369,24 +369,38 @@ case class Semantics(
 
       // `x`: the identifier receiving the value of `this`
       // `e`: the expression which holds the default value of `this` (global object or method receiver)
-      case CFGEnterCode(_, _, x, e) => {
-        val (v, excSet) = V(e, st)
+      case CFGEnterCode(_, _, thisId, thisExpr) => {
+        // compute the abstract value of `this` from the program state.
+        // note that we capture exceptions raised by this computation in `excSet`.
+        val (v, excSet) = V(thisExpr, st)
         val thisVal = AbsValue(v.getThis(st.heap))
+
+        // bind the computed value to the `this` identifier,
+        // resulting in a new state `st1`.
+        val st1 = if (!v.isBottom) st.varStore(thisId, thisVal)
+        else AbsState.Bot
+
+        // raise the exceptions captured above in `st`.
+        // note that we don't raise these in `st1`, since the exceptions occurred
+        // before we could compute a value for `this` and save it to `st1`.
+        val newExcSt = st.raiseException(excSet)
+
+        (st1, excSt ⊔ newExcSt)
+      }
+
+      case CFGExprStmt(_, _, lhs, expr) => {
+        // compute the abstract value of `expr`
+        val (v, excSet) = V(expr, st)
+
+        // write the computed value to the identifier `lhs`
         val st1 =
-          if (!v.isBottom) st.varStore(x, thisVal)
+          if (!v.isBottom) st.varStore(lhs, v)
           else AbsState.Bot
+
         val newExcSt = st.raiseException(excSet)
         (st1, excSt ⊔ newExcSt)
       }
 
-      case CFGExprStmt(_, _, x, e) => {
-        val (v, excSet) = V(e, st)
-        val st1 =
-          if (!v.isBottom) st.varStore(x, v)
-          else AbsState.Bot
-        val newExcSt = st.raiseException(excSet)
-        (st1, excSt ⊔ newExcSt)
-      }
       case CFGDelete(_, _, x1, CFGVarRef(_, x2)) => {
         val baseV = st.lookupBase(x2)
         val undefB = baseV.pvalue.undefval.fold(AB)(_ => AT)
@@ -477,7 +491,14 @@ case class Semantics(
         val newExcSt = st.raiseException(excSet1)
         (st.copy(heap = heap1), excSt ⊔ newExcSt)
       }
+
       case CFGFunExpr(_, block, lhs, None, f, aNew1, aNew2, None) => {
+        println("funexpr:")
+        println("block: " + block)
+        println("lhs: " + lhs)
+        println("f: " + f)
+        println("aNew1: " + aNew1)
+        println("aNew2: " + aNew2)
         //Recency Abstraction
         val loc1 = Loc(aNew1, tp)
         val loc2 = Loc(aNew2, tp)
@@ -495,6 +516,7 @@ case class Semantics(
         val newSt = st2.copy(heap = h4).varStore(lhs, fVal)
         (newSt, excSt)
       }
+
       case CFGFunExpr(_, block, lhs, Some(name), f, aNew1, aNew2, Some(aNew3)) => {
         // Recency Abstraction
         val loc1 = Loc(aNew1, tp)

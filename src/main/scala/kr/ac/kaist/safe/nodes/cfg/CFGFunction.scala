@@ -59,8 +59,11 @@ case class CFGFunction(
     block
   }
 
-  // create call
-  // `retVar`: the LHS variable receiving the return value of the call (e.g. the `x` in `x = f();`)
+  // create a `Call` block within this `CFGFunction`.
+  // `callInstCons`: a mapping from the produced `Call` block to its sole instruction of type `CFGCallInst`.
+  // `retVar`: the identifier receiving the return value of the call (e.g. the `x` in `x = f();`)
+  // `outer`: the `LoopHead` block corresponding to the innermost loop containing the function call, if one exists.
+  //          (if the call isn't contained in a loop, `outer == None`.)
   def createCall(callInstCons: Call => CFGCallInst, retVar: CFGId, outer: Option[LoopHead]): Call = {
     val call = Call(this, callInstCons, retVar)
     val afterCall = call.afterCall
