@@ -19,12 +19,17 @@ import kr.ac.kaist.safe.util.NodeUtil
 case class IRFunctional(
     override val ast: Functional,
     fromSource: Boolean,
-    name: IRId,
-    params: List[IRId],
+    name: IRId, // the identifier of this function
+    params: List[IRId], // the identifiers of this function's arguments
+
+    // the statements which load values from the `arguments` array into the respective argument identifiers
+    // e.g. for `function(a, b) { ... }`, we would have 2 statements in `args` corresponding to:
+    // `a = arguments[0]; b = arguments[1];`
     args: List[IRStmt],
-    fds: List[IRFunDecl],
-    vds: List[IRVarStmt],
-    body: List[IRStmt],
+
+    fds: List[IRFunDecl], // other functions declared within this function
+    vds: List[IRVarStmt], // variables declared within this function
+    body: List[IRStmt], // the list of statements made within this function
     isArrow: Boolean
 ) extends IRNode(ast) {
   override def toString(indent: Int): String = {

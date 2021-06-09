@@ -246,7 +246,6 @@ case class Semantics(
           val localEnv = ctx.pureLocal
           // the abstract value of the `arguments` array
           val (argV, _) = localEnv.record.decEnvRec.GetBindingValue(fun.argumentsName)
-          println("argV: " + argV)
 
           // bind argument values to their names in the function scope, one at a time.
           // each time we bind a new argument, we get an intermediate state `iSt`.
@@ -493,12 +492,6 @@ case class Semantics(
       }
 
       case CFGFunExpr(_, block, lhs, None, f, aNew1, aNew2, None) => {
-        println("funexpr:")
-        println("block: " + block)
-        println("lhs: " + lhs)
-        println("f: " + f)
-        println("aNew1: " + aNew1)
-        println("aNew2: " + aNew2)
         //Recency Abstraction
         val loc1 = Loc(aNew1, tp)
         val loc2 = Loc(aNew2, tp)
@@ -543,7 +536,9 @@ case class Semantics(
         val newSt = AbsState(h5, newCtx, st3.allocs).varStore(lhs, fVal)
         (newSt, excSt)
       }
+
       case CFGAssert(_, _, expr, _) => B(expr, st, excSt)
+
       case CFGCatch(_, _, x) => {
         val localEnv = st.context.pureLocal
         val (excSetV, _) = localEnv.record.decEnvRec.GetBindingValue("@exception_all")
@@ -1405,6 +1400,11 @@ case class Semantics(
         val newExcSt = st.raiseException(excSetV)
         (newSt, excSt ⊔ newExcSt)
       }
+
+      // @TargetFunction(func, target)
+      // writes the [[TargetFunction]] property of `func` to be `target`.
+      // the target function is defined in the ES spec, and references the "bindee" of a bound function.
+      // (i.e., the target function of the bound function `f.bind(obj)` is `f`)
       case (NodeUtil.INTERNAL_TARGET_FUN, List(exprO, exprP), None) => {
         val (v, excSetO) = V(exprO, st)
         val (p, excSetP) = V(exprP, st)
@@ -1419,6 +1419,9 @@ case class Semantics(
         val newExcSt = st.raiseException(excSetO ++ excSetP)
         (newSt, excSt ⊔ newExcSt)
       }
+
+      // @TargetFunction(func)
+      // reads the [[TargetFunction]] property of `func`.
       case (NodeUtil.INTERNAL_TARGET_FUN, List(expr), None) => {
         val (v, excSet) = V(expr, st)
         val obj = st.heap.get(v.locset)
@@ -1432,6 +1435,7 @@ case class Semantics(
       }
 
       // @BoundThis(func, thisArg)
+      // writes the [[BoundThis]] property of `func` to be `thisArg`.
       case (NodeUtil.INTERNAL_BOUND_THIS, List(funcExpr, thisExpr), None) => {
         // the two arguments to @BoundThis can only be assumed to be expressions, rather than single values.
         // so first, we simplify these expressions down to single values using the `V` method.
@@ -1463,8 +1467,11 @@ case class Semantics(
         val newExcSt = st.raiseException(funcExcSet ++ thisExcSet)
         (newSt, excSt ⊔ newExcSt)
       }
-      case (NodeUtil.INTERNAL_BOUND_THIS, List(expr), None) => {
-        val (v, excSet) = V(expr, st)
+
+      // @BoundThis(func)
+      // retrieve the `[[BoundThis]]` value of the argument `func`.
+      case (NodeUtil.INTERNAL_BOUND_THIS, List(funcExpr), None) => {
+        val (v, excSet) = V(funcExpr, st)
         val obj = st.heap.get(v.locset)
         val value = obj(IBoundThis).value
         val st1 =
@@ -1606,15 +1613,20 @@ case class Semantics(
     }
   }
 
-  // internal call instruction.
+  // implements the transfer function of a call instruction.
   // returns (value of this, value of args, exit state, exit exception state)
+  // `cp`: the control point containing the instruction's `Call` block
+  // `i`: the call instruction being executed
+  // `st`: the incoming normal program state
+  // `excSt`: the incoming exceptional program state
   def internalCI(cp: ControlPoint, i: CFGCallInst, st: AbsState, excSt: AbsState): (AbsValue, AbsValue, AbsState, AbsState) = {
     // cons, thisArg and arguments must not be bottom
     val tp = cp.tracePartition
     val loc = Loc(i.asite, tp)
     val st1 = st.alloc(loc)
     val (funVal, funExcSet) = V(i.fun, st1)
-    // compute the possible locations of functions being called based on the type of call instruction.
+
+    // compute the possible locations of the function being called based on the type of call instruction.
     val funLocSet = i match {
       // if it's a constructor (i.e. called with `new`), only use locations which may contain a constructor.
       case (_: CFGConstruct) => funVal.locset.filter(l => AT ⊑ st1.heap.hasConstruct(l))

@@ -117,12 +117,18 @@ class DefaultCFGBuilder(
     vds.foldLeft(List[CFGId]())((vars, vd) => id2cfgId(vd.lhs) :: vars).reverse
   }
 
+  // recall that an `IRSeq` statement is just a container for a sequence of consecutive IR statements.
+  // then `flatten(stmts)` replaces each `IRSeq` element of `stmts` with its contained statements.
+
   // TODO: Is it okay not to flatten recursively?
-  // flatten IRSeq
+  // (the above is a comment from the original source, referring to the fact that the `IRSeq` statements
+  //  are only flattened once. so in particular, if an `IRSeq` contained another `IRSeq`, the input list
+  //  `stmts` might not be fully flattened)
   private def flatten(stmts: List[IRStmt]): List[IRStmt] = {
-    stmts.foldRight(List[IRStmt]())((stmt, l) => stmt match {
-      case IRSeq(_, stmts) => stmts ++ l
-      case _ => stmt :: l
+    stmts.foldRight(List[IRStmt]())((stmt, result) => stmt match {
+      // if the next statement is an `IRSeq`, unwrap its statements and append them directly to the result
+      case IRSeq(_, stmts) => stmts ++ result
+      case _ => stmt :: result
     })
   }
 
@@ -150,9 +156,10 @@ class DefaultCFGBuilder(
       val nameStr: String = name.originalName
 
       val newFunc: CFGFunction = cfg.createFunction(argumentsName, argVars, localVars, nameStr, functional, true, isArrow)
+
+      // before we enter the new function, save the old values of `currentFunc` and `oldLoop`.
       val oldFunc: CFGFunction = currentFunc
       currentFunc = newFunc
-
       val oldLoop: Option[LoopHead] = currentLoop
       currentLoop = None
 
@@ -168,8 +175,11 @@ class DefaultCFGBuilder(
       cfg.addEdge(ThrowEndLabel of lmap toList, newFunc.exitExc)
       cfg.addEdge(AfterCatchLabel of lmap toList, newFunc.exitExc)
 
+      // restore the original values of `currentFunc` and `currentLoop`
       currentFunc = oldFunc
       currentLoop = oldLoop
+
+      // return the `CFGFunction` we just built
       newFunc
   }
 
@@ -198,7 +208,6 @@ class DefaultCFGBuilder(
   // `func`: the function containing this statement
   // `blocks`: this *seems* to *always* be a list of exactly one block - the block containing `stmt`.
   private def translateStmt(stmt: IRStmt, func: CFGFunction, blocks: List[CFGBlock], lmap: LabelMap): (List[CFGBlock], LabelMap) = {
-    println(s"func: ${func}, lmap: ${lmap}")
     stmt match {
       case IRNoOp(_, desc) =>
         val tailBlock: NormalBlock = getTail(blocks, func)
