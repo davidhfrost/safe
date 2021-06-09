@@ -13,7 +13,9 @@ package kr.ac.kaist.safe.util
 
 import scala.util.Try
 import java.io.{ BufferedWriter, File, FileWriter, IOException }
-import kr.ac.kaist.safe.{ LINE_SEP, CUR_DIR, BASE_DIR, SEP }
+import kr.ac.kaist.safe.{ BASE_DIR, CUR_DIR, LINE_SEP, SEP }
+
+import scala.collection.mutable
 
 object Useful {
   def toRelativePath(fileName: String): String = {
@@ -60,4 +62,11 @@ object Useful {
   }
 
   def path(dirs: String*): String = BASE_DIR + SEP + dirs.mkString(SEP)
+
+  def mapToString[K, V](map: mutable.MapLike[K, V, _]): String = {
+    map.foldLeft("")((result, pair) => {
+      val (k, v) = pair
+      result + s"$k -> $v\n"
+    })
+  }
 }

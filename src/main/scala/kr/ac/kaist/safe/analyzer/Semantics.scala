@@ -63,6 +63,15 @@ case class Semantics(
       .getOrElse(tp, CallInfo(AbsState.Bot, AbsValue.Bot, AbsValue.Bot))
   }
 
+  // constructs a string representation of the current `ControlPoint -> CallInfo` map.
+  def getCallInfoString: String = ccpToCallInfo.foldLeft("")((result, pair) => {
+    val (callBlock, v) = pair
+    v.foldLeft(result)((res, innerPair) => {
+      val (tp, callInfo) = innerPair
+      res + s"($callBlock (${callBlock.func.name}), $tp) -> $callInfo\n\n"
+    })
+  })
+
   // each "block" of the CFG corresponds a section of code that will execute linearly.
   // for each such block, the analysis maintains a different program state for each trace partition token
   // it encounters at that block.
@@ -1660,9 +1669,10 @@ case class Semantics(
           case _: CFGCall =>
             funObj(ICall).fidset
         }
-        // for each possible fid:
+
+        // for each possible callee fid:
         fidSet.foreach((fid) => {
-          // find the function associated to the fid in the CFG.
+          // find the function associated to the callee fid in the CFG.
           cfg.getFunc(fid) match {
             case Some(funCFG) => {
               val scopeValue = funObj(IScope).value
@@ -1674,14 +1684,21 @@ case class Semantics(
               val newRec = bindNonnullName(newEnv.record.decEnvRec, funCFG.argumentsName, argVal)
               val newRec2 = bindNonnullName(newRec, "@scope", scopeValue)
 
+              // use `cp.next` to compute all possible control points at the callee's `Entry` block
+              // across the call edge we're analyzing.
               cp.next(funCFG.entry, CFGEdgeCall, this, st1).foreach(entryCP => {
                 val newTP = entryCP.tracePartition
+
+                // compute control points at the callee's `Exit` and `ExitExc` blocks which
+                // correspond to the newly-found control point at the `Entry` block.
                 val exitCP = ControlPoint(funCFG.exit, newTP)
                 val exitExcCP = ControlPoint(funCFG.exitExc, newTP)
+
                 val data = EdgeData(
                   AllocLocSet.Empty,
                   newEnv.copy(record = newRec2),
-                  thisVal
+                  // inherit the `thisBinding` in an arrow function from the *caller*
+                  if (funCFG.isArrow) getState(cp).context.thisBinding else thisVal
                 )
                 addIPEdge(cp, entryCP, data)
                 addIPEdge(exitCP, cpAfterCall, EdgeData(

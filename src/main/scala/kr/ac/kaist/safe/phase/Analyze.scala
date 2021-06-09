@@ -68,8 +68,12 @@ case object Analyze extends PhaseObj[(CFG, Semantics, TracePartition, HeapBuildC
     } else if (config.exitDump) {
       val state = sem.getState(exitCP)
       println(state.toString)
-      println("-----IP succ-----")
+      println("\n\n-----IP succ-----\n\n")
       println(sem.getAllIPSucc)
+      println("\n\n-----CallInfo-----\n\n")
+      println(sem.getCallInfoString)
+      println("\n\n-----CFG-----\n\n")
+      println(sem.cfg.toString(0))
     }
 
     Success((cfg, iters, initTP, sem))

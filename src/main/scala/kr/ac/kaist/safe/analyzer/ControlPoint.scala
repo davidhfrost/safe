@@ -29,6 +29,8 @@ case class ControlPoint(
     block: CFGBlock,
     tracePartition: TracePartition
 ) {
+  // computes a list of control points across the edge from this control point to the destination block `to`.
+  // note that the edge type `edgeType` is specified.
   def next(
     to: CFGBlock,
     edgeType: CFGEdgeType,
