@@ -1644,11 +1644,11 @@ case class Semantics(
     }
 
     // compute the abstract values of `this` and `arguments`
-    val (thisVal, _) = V(i.thisArg, st1)
+    val (thisArgVal, _) = V(i.thisArg, st1)
     val (argVal, _) = V(i.arguments, st1)
 
     // XXX: stop if thisArg or arguments is LocSetBot(ValueBot)
-    if (thisVal.isBottom || argVal.isBottom) {
+    if (thisArgVal.isBottom || argVal.isBottom) {
       (AbsValue.Bot, AbsValue.Bot, st, excSt)
     } else {
       val oldLocalEnv = st1.context.pureLocal
@@ -1686,6 +1686,7 @@ case class Semantics(
 
               // use `cp.next` to compute all possible control points at the callee's `Entry` block
               // across the call edge we're analyzing.
+              // for each such entry control point of a callee:
               cp.next(funCFG.entry, CFGEdgeCall, this, st1).foreach(entryCP => {
                 val newTP = entryCP.tracePartition
 
@@ -1694,18 +1695,33 @@ case class Semantics(
                 val exitCP = ControlPoint(funCFG.exit, newTP)
                 val exitExcCP = ControlPoint(funCFG.exitExc, newTP)
 
+                // inherit the `thisBinding` in an arrow function from the caller's scope.
+                // this isn't accurate yet, but it might be close enough.
+                val thisVal = if (funCFG.isArrow) {
+                  getState(cp).context.thisBinding
+                } else {
+                  thisArgVal
+                }
+
                 val data = EdgeData(
                   AllocLocSet.Empty,
                   newEnv.copy(record = newRec2),
-                  // inherit the `thisBinding` in an arrow function from the *caller*
-                  if (funCFG.isArrow) getState(cp).context.thisBinding else thisVal
+                  thisVal
                 )
+
+                // each function call induces the following three interprocedural edges:
+
+                // 1. from the caller's `Call` block to the callee's `Entry` block.
                 addIPEdge(cp, entryCP, data)
+
+                // 2. from the callee's `Exit` block to the caller's `AfterCall` block.
                 addIPEdge(exitCP, cpAfterCall, EdgeData(
                   st1.allocs,
                   oldLocalEnv,
                   st1.context.thisBinding
                 ))
+
+                // 3. from the callee's `ExitExc` block to the caller's `AfterCatch` block.
                 addIPEdge(exitExcCP, cpAfterCatch, EdgeData(
                   st1.allocs,
                   oldLocalEnv,
@@ -1713,6 +1729,10 @@ case class Semantics(
                 ))
               })
             }
+
+            // this case would be hit when there's no `CFGFunction` corresponding to
+            // a callee's `fid` in the `fidSet`.
+            // (this shouldn't ever happen, and would indicate a bug in the analysis algorithm.)
             case None => excLog.signal(UndefinedFunctionCallError(i.ir))
           }
         })
@@ -1741,7 +1761,7 @@ case class Semantics(
         else AbsHeap.Bot
 
       val newSt = st1.copy(heap = h3)
-      (thisVal, argVal, newSt, excSt ⊔ newExcSt)
+      (thisArgVal, argVal, newSt, excSt ⊔ newExcSt)
     }
   }
 
