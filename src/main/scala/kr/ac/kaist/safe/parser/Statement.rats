@@ -64,7 +64,7 @@ public Stmt Statement =
        yyValue = new ABlock(NodeUtil.makeASTNodeInfo(span), toList(a1), false);
      }
    / ExtendedFunctionDeclaration
-   / ImportDeclaration
+   / ImportDeclaration EOS
    / var w a1:Id w equals w
      a2:(opensquare w NumericLiterals closesquare { yyValue = createSpan(yyStart,yyCount+1); }) EOS
      { Span span = createSpan(yyStart,yyCount);

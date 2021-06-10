@@ -609,14 +609,16 @@ case class FromImportDeclaration(
     importClause: ImportClause,
     fromClause: FromClause
 ) extends ImportDeclaration {
-  override def toString(indent: Int): String = "FromImportDeclaration."
+  override def toString(indent: Int): String =
+    s"import ${importClause.toString(0)} ${fromClause.toString(0)}"
 }
 
 case class ModuleImportDeclaration(
     info: ASTNodeInfo,
     moduleSpecifier: ModuleSpecifier
 ) extends ImportDeclaration {
-  override def toString(indent: Int): String = "ModuleImportDeclaration"
+  override def toString(indent: Int): String =
+    s"import ${moduleSpecifier.toString(0)}"
 }
 
 // ES6 15.2.2: ImportClause
@@ -626,23 +628,25 @@ case class ImportedDefaultBinding(
     info: ASTNodeInfo,
     name: Id
 ) extends ImportClause {
-  override def toString(indent: Int): String = name.toString(indent)
+  override def toString(indent: Int): String = name.toString(0)
 }
 
 case class NameSpaceImport(
     info: ASTNodeInfo,
     name: Id
 ) extends ImportClause {
-  override def toString(indent: Int): String = s"* as ${name.text}"
+  override def toString(indent: Int): String = s"* as ${name.toString(0)}"
 }
 
-trait ImportSpecifier extends ASTNode
+trait ImportSpecifier extends ASTNode {
+  override def toString: String = toString(0)
+}
 
 case class SameNameImportSpecifier(
     info: ASTNodeInfo,
     importedBinding: Id
 ) extends ImportSpecifier {
-  def toString(indent: Int): String = "SameNameImportSpecifier"
+  def toString(indent: Int): String = importedBinding.toString(0)
 }
 
 case class RenamedImportSpecifier(
@@ -650,14 +654,16 @@ case class RenamedImportSpecifier(
     importedBinding: Id,
     identifierName: Id
 ) extends ImportSpecifier {
-  def toString(indent: Int): String = "RenamedImportSpecifier"
+  def toString(indent: Int): String =
+    s"${importedBinding.toString(0)} as ${identifierName.toString(0)}"
 }
 
 case class NamedImports(
     info: ASTNodeInfo,
     importsList: List[ImportSpecifier]
 ) extends ImportClause {
-  override def toString(indent: Int): String = "NamedImports"
+  override def toString(indent: Int): String =
+    s"{ ${importsList.mkString(", ")} }"
 }
 
 case class DefaultAndNameSpaceImport(
@@ -665,7 +671,8 @@ case class DefaultAndNameSpaceImport(
     defaultImport: ImportedDefaultBinding,
     nameSpaceImport: NameSpaceImport
 ) extends ImportClause {
-  override def toString(indent: Int): String = "DefaultAndNameSpaceImport"
+  override def toString(indent: Int): String =
+    s"${defaultImport.toString(0)}, ${nameSpaceImport.toString(0)}"
 }
 
 case class DefaultAndNamedImports(
@@ -673,19 +680,21 @@ case class DefaultAndNamedImports(
     defaultImport: ImportedDefaultBinding,
     namedImports: NamedImports
 ) extends ImportClause {
-  override def toString(indent: Int): String = "DefaultAndNamedImports"
+  override def toString(indent: Int): String =
+    s"${defaultImport.toString(0)}, ${namedImports.toString(0)}"
 }
 
 case class ModuleSpecifier(
     info: ASTNodeInfo,
     moduleName: StringLiteral
 ) extends ASTNode {
-  override def toString(indent: Int): String = "ModuleSpecifier"
+  override def toString(indent: Int): String = moduleName.toString(0)
 }
 
 case class FromClause(
     info: ASTNodeInfo,
     moduleSpecifier: ModuleSpecifier
 ) extends ASTNode {
-  override def toString(indent: Int): String = "FromClause"
+  override def toString(indent: Int): String =
+    s"from ${moduleSpecifier.toString(0)}"
 }
