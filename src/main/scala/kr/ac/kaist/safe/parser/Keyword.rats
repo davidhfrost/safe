@@ -26,15 +26,14 @@ body {
         "return",       "switch",       "this",         "throw",
         "try",          "typeof",       "var",          "void",
         "while",        "with",
-
-        /*
+/*
         "class",        "const",        "enum",         "export",
         "extends",      "import",       "super",
 
-        "null",         "true",         "false"
+        "null",         "true",         "false",
 
         "module",       "from",         "as"
-        */
+*/
     });
   }
 }

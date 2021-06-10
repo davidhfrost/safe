@@ -599,3 +599,87 @@ case class Debugger(
     s.toString
   }
 }
+
+// ES6 15.2.2: ImportDeclaration
+
+sealed trait ImportDeclaration extends Stmt
+
+case class FromImportDeclaration(
+    info: ASTNodeInfo,
+    importClause: ImportClause,
+    fromClause: FromClause
+) extends ImportDeclaration {
+  override def toString(indent: Int): String = "FromImportDeclaration."
+}
+
+case class ModuleImportDeclaration(
+    info: ASTNodeInfo,
+    moduleSpecifier: ModuleSpecifier
+) extends ImportDeclaration {
+  override def toString(indent: Int): String = "ModuleImportDeclaration"
+}
+
+// ES6 15.2.2: ImportClause
+sealed trait ImportClause extends ASTNode
+
+case class ImportedDefaultBinding(
+    info: ASTNodeInfo,
+    name: Id
+) extends ImportClause {
+  override def toString(indent: Int): String = name.toString(indent)
+}
+
+case class NameSpaceImport(
+    info: ASTNodeInfo,
+    name: Id
+) extends ImportClause {
+  override def toString(indent: Int): String = s"* as ${name.text}"
+}
+
+case class ImportSpecifier(
+    info: ASTNodeInfo,
+    importedBinding: Id,
+    identifierName: Option[Id] = None
+) extends ASTNode {
+  def toString(indent: Int): String = identifierName match {
+    case None => importedBinding.toString(indent)
+    case Some(name) => s"${importedBinding.toString(indent)} as ${name.toString(0)}"
+  }
+}
+
+case class NamedImports(
+    info: ASTNodeInfo,
+    importsList: List[ImportSpecifier]
+) extends ImportClause {
+  override def toString(indent: Int): String = "NamedImports"
+}
+
+case class DefaultAndNameSpaceImport(
+    info: ASTNodeInfo,
+    defaultImport: ImportedDefaultBinding,
+    nameSpaceImport: NameSpaceImport
+) extends ImportClause {
+  override def toString(indent: Int): String = "DefaultAndNameSpaceImport"
+}
+
+case class DefaultAndNamedImports(
+    info: ASTNodeInfo,
+    defaultImport: ImportedDefaultBinding,
+    namedImports: NamedImports
+) extends ImportClause {
+  override def toString(indent: Int): String = "DefaultAndNamedImports"
+}
+
+case class ModuleSpecifier(
+    info: ASTNodeInfo,
+    moduleName: StringLiteral
+) extends ASTNode {
+  override def toString(indent: Int): String = "ModuleSpecifier"
+}
+
+case class FromClause(
+    info: ASTNodeInfo,
+    moduleSpecifier: ModuleSpecifier
+) extends ASTNode {
+  override def toString(indent: Int): String = "FromClause"
+}

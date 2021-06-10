@@ -23,6 +23,7 @@ import Symbol;
 import Identifier;
 import Keyword;
 import Spacing;
+import Literal;
 
 /*
  * Statement ::=
@@ -48,6 +49,8 @@ import Spacing;
  * | try w ABlock w Finally
  * | try w ABlock w Catch w Finally
  * | debugger w ;
+ * | ImportDeclaration
+ * | ExportDeclaration
  */
 private transient void NumericLiteral =
      a1:DecimalDigits !(idrest) { log(writer, a1); } ;
@@ -61,6 +64,7 @@ public Stmt Statement =
        yyValue = new ABlock(NodeUtil.makeASTNodeInfo(span), toList(a1), false);
      }
    / ExtendedFunctionDeclaration
+   / ImportDeclaration
    / var w a1:Id w equals w
      a2:(opensquare w NumericLiterals closesquare { yyValue = createSpan(yyStart,yyCount+1); }) EOS
      { Span span = createSpan(yyStart,yyCount);
@@ -207,7 +211,8 @@ public Stmt Statement =
    / debugger EOS
      { Span span = createSpan(yyStart,yyCount);
        yyValue = new Debugger(NodeUtil.makeASTNodeInfo(span));
-     };
+     }
+   ;
 
 private transient Stmt ExtendedFunctionDeclaration =
      a1:FunctionDeclaration
@@ -299,3 +304,87 @@ private transient Catch Catch =
  */
 private transient List<Stmt> Finally =
      finally w yyValue:ABlock ;
+
+// ES6 statements below
+
+// ES6 15.2.2: ImportDeclaration
+
+private transient ImportDeclaration ImportDeclaration =
+    "import" w imp:ImportClause w from:FromClause {
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = new FromImportDeclaration(NodeUtil.makeASTNodeInfo(span), imp, from);
+    }
+
+  / "import" w modSpec:ModuleSpecifier {
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = new ModuleImportDeclaration(NodeUtil.makeASTNodeInfo(span), modSpec);
+    };
+
+private transient ImportClause ImportClause =
+    name:Id {
+        // ImportedDefaultBinding
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = new ImportedDefaultBinding(NodeUtil.makeASTNodeInfo(span), name);
+    }
+
+  / NameSpaceImport
+
+  / NamedImports
+
+  / def:ImportedDefaultBinding w comma w namespace:NameSpaceImport {
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = new DefaultAndNameSpaceImport(NodeUtil.makeASTNodeInfo(span), def, namespace);
+    }
+
+  / def:ImportedDefaultBinding w comma w named:NamedImports {
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = new DefaultAndNamedImports(NodeUtil.makeASTNodeInfo(span), def, named);
+  };
+
+private transient ImportedDefaultBinding ImportedDefaultBinding =
+    id:Id {
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = new ImportedDefaultBinding(NodeUtil.makeASTNodeInfo(span), id);
+    };
+
+private transient NameSpaceImport NameSpaceImport =
+    "*" w "as" w name:Id {
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = new NameSpaceImport(NodeUtil.makeASTNodeInfo(span), name);
+    };
+
+private transient NamedImports NamedImports =
+    opencurly w closecurly {
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = new NamedImports(NodeUtil.makeASTNodeInfo(span), toList(Collections.<ImportSpecifier>emptyList()));
+    }
+
+    // TODO: NamedImports (nonempty)
+    ;
+
+private transient FromClause FromClause =
+    "from" w modSpec:ModuleSpecifier {
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = new FromClause(NodeUtil.makeASTNodeInfo(span), modSpec);
+    };
+
+private transient List<ImportSpecifier> ImportsList =
+    a1:ImportSpecifier a2s:(w void:comma w ImportSpecifier)
+    { yyValue = cons(a1, a2s.list()); };
+
+private transient ImportSpecifier ImportSpecifier =
+    binding:Id {
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = new ImportSpecifier(NodeUtil.makeASTNodeInfo(span), binding);
+    }
+
+  / name:Id w "as" w binding:Id {
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = new ImportSpecifier(NodeUtil.makeASTNodeInfo(span), binding, Some.<Id>apply(name));
+    };
+
+private transient ModuleSpecifier ModuleSpecifier =
+    moduleName:StringLiteral {
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = new ModuleSpecifier(NodeUtil.makeASTNodeInfo(span), moduleName);
+    };
