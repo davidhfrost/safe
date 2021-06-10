@@ -88,6 +88,10 @@ trait ASTWalker {
       Try(walk(info), body.map(walk), catchBlock.map(walk), fin.map(_.map(walk)))
     case Debugger(info) =>
       Debugger(walk(info))
+    case FromImportDeclaration(info, imp, from) =>
+      FromImportDeclaration(walk(info), walk(imp), walk(from))
+    case ModuleImportDeclaration(info, moduleSpecifier) =>
+      ModuleImportDeclaration(walk(info), walk(moduleSpecifier))
   }
 
   def walk(node: Expr): Expr = node match {
@@ -226,5 +230,43 @@ trait ASTWalker {
     case Functional(info, fds, vds, stmts, name, params, body, isArrow) =>
       Functional(walk(info), fds.map(walk), vds.map(walk), walk(stmts), walk(name),
         params.map(walk), body, isArrow)
+  }
+
+  def walk(node: ImportSpecifier): ImportSpecifier = node match {
+    case SameNameImportSpecifier(info, importedBinding) =>
+      SameNameImportSpecifier(walk(info), walk(importedBinding))
+    case RenamedImportSpecifier(info, importedBinding, idName) =>
+      RenamedImportSpecifier(walk(info), walk(importedBinding), walk(idName))
+  }
+
+  def walk(node: ImportClause): ImportClause = node match {
+    case ImportedDefaultBinding(info, name) =>
+      ImportedDefaultBinding(walk(info), walk(name))
+    case NameSpaceImport(info, name) =>
+      NameSpaceImport(walk(info), walk(name))
+    case NamedImports(info, importsList) =>
+      NamedImports(walk(info), importsList.map(walk))
+    case DefaultAndNameSpaceImport(info, defaultImport, nameSpaceImport) =>
+      DefaultAndNameSpaceImport(
+        walk(info),
+        walk(defaultImport).asInstanceOf[ImportedDefaultBinding],
+        walk(nameSpaceImport).asInstanceOf[NameSpaceImport]
+      )
+    case DefaultAndNamedImports(info, defaultImport, nameSpaceImport) =>
+      DefaultAndNamedImports(
+        walk(info),
+        walk(defaultImport).asInstanceOf[ImportedDefaultBinding],
+        walk(nameSpaceImport).asInstanceOf[NamedImports]
+      )
+  }
+
+  def walk(node: ModuleSpecifier): ModuleSpecifier = node match {
+    case ModuleSpecifier(info, moduleName) =>
+      ModuleSpecifier(walk(info), walk(moduleName).asInstanceOf[StringLiteral])
+  }
+
+  def walk(node: FromClause): FromClause = node match {
+    case FromClause(info, moduleSpecifier) =>
+      FromClause(walk(info), walk(moduleSpecifier))
   }
 }

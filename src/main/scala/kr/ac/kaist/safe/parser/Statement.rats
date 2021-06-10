@@ -321,17 +321,7 @@ private transient ImportDeclaration ImportDeclaration =
     };
 
 private transient ImportClause ImportClause =
-    name:Id {
-        // ImportedDefaultBinding
-        Span span = createSpan(yyStart,yyCount);
-        yyValue = new ImportedDefaultBinding(NodeUtil.makeASTNodeInfo(span), name);
-    }
-
-  / NameSpaceImport
-
-  / NamedImports
-
-  / def:ImportedDefaultBinding w comma w namespace:NameSpaceImport {
+  def:ImportedDefaultBinding w comma w namespace:NameSpaceImport {
         Span span = createSpan(yyStart,yyCount);
         yyValue = new DefaultAndNameSpaceImport(NodeUtil.makeASTNodeInfo(span), def, namespace);
     }
@@ -339,6 +329,16 @@ private transient ImportClause ImportClause =
   / def:ImportedDefaultBinding w comma w named:NamedImports {
         Span span = createSpan(yyStart,yyCount);
         yyValue = new DefaultAndNamedImports(NodeUtil.makeASTNodeInfo(span), def, named);
+  }
+
+  / NameSpaceImport
+
+  / NamedImports
+
+  / name:Id {
+        // ImportedDefaultBinding
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = new ImportedDefaultBinding(NodeUtil.makeASTNodeInfo(span), name);
   };
 
 private transient ImportedDefaultBinding ImportedDefaultBinding =
@@ -356,10 +356,19 @@ private transient NameSpaceImport NameSpaceImport =
 private transient NamedImports NamedImports =
     opencurly w closecurly {
         Span span = createSpan(yyStart,yyCount);
-        yyValue = new NamedImports(NodeUtil.makeASTNodeInfo(span), toList(Collections.<ImportSpecifier>emptyList()));
+        yyValue = new NamedImports(
+            NodeUtil.makeASTNodeInfo(span),
+            toList(Collections.<ImportSpecifier>emptyList())
+        );
     }
 
-    // TODO: NamedImports (nonempty)
+  / opencurly w imps:ImportsList w closecurly {
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = new NamedImports(
+            NodeUtil.makeASTNodeInfo(span),
+            toList(imps)
+        );
+    }
     ;
 
 private transient FromClause FromClause =
@@ -369,18 +378,18 @@ private transient FromClause FromClause =
     };
 
 private transient List<ImportSpecifier> ImportsList =
-    a1:ImportSpecifier a2s:(w void:comma w ImportSpecifier)
+    a1:ImportSpecifier a2s:(w void:comma w ImportSpecifier)*
     { yyValue = cons(a1, a2s.list()); };
 
 private transient ImportSpecifier ImportSpecifier =
-    binding:Id {
+  name:Id w "as" w binding:Id {
         Span span = createSpan(yyStart,yyCount);
-        yyValue = new ImportSpecifier(NodeUtil.makeASTNodeInfo(span), binding);
+        yyValue = new RenamedImportSpecifier(NodeUtil.makeASTNodeInfo(span), binding, name);
     }
 
-  / name:Id w "as" w binding:Id {
+  / binding:Id {
         Span span = createSpan(yyStart,yyCount);
-        yyValue = new ImportSpecifier(NodeUtil.makeASTNodeInfo(span), binding, Some.<Id>apply(name));
+        yyValue = new SameNameImportSpecifier(NodeUtil.makeASTNodeInfo(span), binding);
     };
 
 private transient ModuleSpecifier ModuleSpecifier =

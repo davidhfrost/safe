@@ -636,15 +636,21 @@ case class NameSpaceImport(
   override def toString(indent: Int): String = s"* as ${name.text}"
 }
 
-case class ImportSpecifier(
+trait ImportSpecifier extends ASTNode
+
+case class SameNameImportSpecifier(
+    info: ASTNodeInfo,
+    importedBinding: Id
+) extends ImportSpecifier {
+  def toString(indent: Int): String = "SameNameImportSpecifier"
+}
+
+case class RenamedImportSpecifier(
     info: ASTNodeInfo,
     importedBinding: Id,
-    identifierName: Option[Id] = None
-) extends ASTNode {
-  def toString(indent: Int): String = identifierName match {
-    case None => importedBinding.toString(indent)
-    case Some(name) => s"${importedBinding.toString(indent)} as ${name.toString(0)}"
-  }
+    identifierName: Id
+) extends ImportSpecifier {
+  def toString(indent: Int): String = "RenamedImportSpecifier"
 }
 
 case class NamedImports(
