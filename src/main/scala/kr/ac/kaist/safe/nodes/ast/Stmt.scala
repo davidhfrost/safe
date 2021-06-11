@@ -621,7 +621,6 @@ case class ModuleImportDeclaration(
     s"import ${moduleSpecifier.toString(0)}"
 }
 
-// ES6 15.2.2: ImportClause
 sealed trait ImportClause extends ASTNode
 
 case class ImportedDefaultBinding(
@@ -638,7 +637,7 @@ case class NameSpaceImport(
   override def toString(indent: Int): String = s"* as ${name.toString(0)}"
 }
 
-trait ImportSpecifier extends ASTNode {
+sealed trait ImportSpecifier extends ASTNode {
   override def toString: String = toString(0)
 }
 
@@ -662,6 +661,7 @@ case class NamedImports(
     info: ASTNodeInfo,
     importsList: List[ImportSpecifier]
 ) extends ImportClause {
+  def getInfo: ASTNodeInfo = info
   override def toString(indent: Int): String =
     s"{ ${importsList.mkString(", ")} }"
 }
@@ -697,4 +697,55 @@ case class FromClause(
 ) extends ASTNode {
   override def toString(indent: Int): String =
     s"from ${moduleSpecifier.toString(0)}"
+}
+
+// ES6 15.2.3: ExportDeclaration
+
+sealed trait ExportDeclaration extends Stmt
+
+case class ExportAllFromOther(
+    info: ASTNodeInfo,
+    from: FromClause
+) extends ExportDeclaration {
+  override def toString(indent: Int): String = "ExportAllFromOther"
+}
+
+case class ExportFromOther(
+    info: ASTNodeInfo,
+    exp: ExportClause,
+    from: FromClause
+) extends ExportDeclaration {
+  override def toString(indent: Int): String = "ExportFromOther"
+}
+
+case class ExportSelf(
+    info: ASTNodeInfo,
+    exp: ExportClause
+) extends ExportDeclaration {
+  override def toString(indent: Int): String = "ExportFromSelf"
+}
+
+case class ExportVarStmt(
+    info: ASTNodeInfo,
+    vars: List[VarDecl]
+) extends ExportDeclaration {
+  override def toString(indent: Int): String = "ExportVarStmt"
+}
+
+// TODO: "export Declaration"
+// this rule is for exporting class declarations and let/const declarations.
+//case class ExportDecl(
+//
+//) extends ExportDeclaration {
+//  override def toString(indent: Int)
+//}
+
+case class ExportClause(
+    info: ASTNodeInfo,
+    exportsList: List[ImportSpecifier]
+) extends ASTNode {
+  override def toString(indent: Int): String = "ExportClause"
+
+  // alternative constructor
+  def this(namedImports: NamedImports) = this(namedImports.info, namedImports.importsList)
 }

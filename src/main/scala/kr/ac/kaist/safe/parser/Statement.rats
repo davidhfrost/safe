@@ -49,8 +49,6 @@ import Literal;
  * | try w ABlock w Finally
  * | try w ABlock w Catch w Finally
  * | debugger w ;
- * | ImportDeclaration
- * | ExportDeclaration
  */
 private transient void NumericLiteral =
      a1:DecimalDigits !(idrest) { log(writer, a1); } ;
@@ -65,6 +63,7 @@ public Stmt Statement =
      }
    / ExtendedFunctionDeclaration
    / ImportDeclaration EOS
+   / ExportDeclaration EOS
    / var w a1:Id w equals w
      a2:(opensquare w NumericLiterals closesquare { yyValue = createSpan(yyStart,yyCount+1); }) EOS
      { Span span = createSpan(yyStart,yyCount);
@@ -396,4 +395,41 @@ private transient ModuleSpecifier ModuleSpecifier =
     moduleName:StringLiteral {
         Span span = createSpan(yyStart,yyCount);
         yyValue = new ModuleSpecifier(NodeUtil.makeASTNodeInfo(span), moduleName);
+    };
+
+// ES6 15.2.3: ExportDeclaration
+
+private transient ExportDeclaration ExportDeclaration =
+    "export" w "*" w from:FromClause {
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = new ExportAllFromOther(NodeUtil.makeASTNodeInfo(span), from);
+    }
+
+  / "export" w exp:ExportClause w from:FromClause {
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = new ExportFromOther(NodeUtil.makeASTNodeInfo(span), exp, from);
+    }
+
+  / "export" w exp:ExportClause {
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = new ExportSelf(NodeUtil.makeASTNodeInfo(span), exp);
+    }
+
+  / "export" w "var" w vars:VariableDeclarationListNoIn {
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = new ExportVarStmt(NodeUtil.makeASTNodeInfo(span), toList(vars));
+    };
+
+  // TODO:
+  /*
+   * export Declaration
+   * export default HoistableDeclaration
+   * export default ClassDeclaration
+   * export default AssignmentExpression
+   */
+
+// reuse the parser for `NamedImports`, since it has the same syntax as `ExportClause`
+private transient ExportClause ExportClause =
+    namedImports:NamedImports {
+        yyValue = new ExportClause(namedImports);
     };
