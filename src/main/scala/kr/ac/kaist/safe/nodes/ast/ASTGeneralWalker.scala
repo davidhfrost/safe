@@ -11,8 +11,23 @@
 
 package kr.ac.kaist.safe.nodes.ast
 
+// this interface is parameterized by the `Result` type,
+// the idea being that `walk`-ing an AST produces a value of type `Result`.
+// the exact meaning of `Result` can thus be decided by the class implementing
+// this interface.
+
+// the `:_*` syntax used many times below is doing a type coercion.
+// specifically, it converts the type `List[Result]` to `Result*`.
+// the `Result*` type is the "varargs" type in Scala, so the `:_*`
+// is really just spreading out a `List[Result]` value across
+// the arguments of a function.
+
 trait ASTGeneralWalker[Result] {
   def join(args: Result*): Result
+
+  // this seems like a reasonable way to implicitly do the `List[Result]`
+  // to `Result*` type conversion.
+  def join(args: List[Result]): Result = join(args: _*)
 
   def walkOptList(opt: Option[List[ASTNode]]): List[Result] = opt match {
     case Some(l) => l.map(walk)
