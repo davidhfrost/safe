@@ -707,7 +707,8 @@ case class ExportAllFromOther(
     info: ASTNodeInfo,
     from: FromClause
 ) extends ExportDeclaration {
-  override def toString(indent: Int): String = "ExportAllFromOther"
+  override def toString(indent: Int): String =
+    s"export * from ${from.toString(0)}"
 }
 
 case class ExportFromOther(
@@ -715,21 +716,24 @@ case class ExportFromOther(
     export: ExportClause,
     from: FromClause
 ) extends ExportDeclaration {
-  override def toString(indent: Int): String = "ExportFromOther"
+  override def toString(indent: Int): String =
+    s"export ${export.toString(0)} ${from.toString(0)}"
 }
 
 case class ExportSelf(
     info: ASTNodeInfo,
     export: ExportClause
 ) extends ExportDeclaration {
-  override def toString(indent: Int): String = "ExportFromSelf"
+  override def toString(indent: Int): String =
+    s"export ${export.toString(0)}"
 }
 
 case class ExportVarStmt(
     info: ASTNodeInfo,
     vars: List[VarDecl]
 ) extends ExportDeclaration {
-  override def toString(indent: Int): String = "ExportVarStmt"
+  override def toString(indent: Int): String =
+    s"export var ${vars.map(_.toString(0)).mkString(", ")}"
 }
 
 /* TODO:
@@ -743,7 +747,8 @@ case class ExportClause(
     info: ASTNodeInfo,
     exportsList: List[ImportSpecifier]
 ) extends ASTNode {
-  override def toString(indent: Int): String = "ExportClause"
+  override def toString(indent: Int): String =
+    s"{ ${exportsList.mkString(", ")} }"
 
   // alternative constructor
   def this(namedImports: NamedImports) = this(namedImports.info, namedImports.importsList)
