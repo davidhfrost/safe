@@ -88,10 +88,22 @@ trait ASTWalker {
       Try(walk(info), body.map(walk), catchBlock.map(walk), fin.map(_.map(walk)))
     case Debugger(info) =>
       Debugger(walk(info))
+
+    // import statements
     case FromImportDeclaration(info, imp, from) =>
       FromImportDeclaration(walk(info), walk(imp), walk(from))
     case ModuleImportDeclaration(info, moduleSpecifier) =>
       ModuleImportDeclaration(walk(info), walk(moduleSpecifier))
+
+    // export statements
+    case ExportAllFromOther(info, from) =>
+      ExportAllFromOther(walk(info), walk(from))
+    case ExportFromOther(info, export, from) =>
+      ExportFromOther(walk(info), walk(export), walk(from))
+    case ExportSelf(info, export) =>
+      ExportSelf(walk(info), walk(export))
+    case ExportVarStmt(info, vars) =>
+      ExportVarStmt(walk(info), vars.map(walk))
   }
 
   def walk(node: Expr): Expr = node match {
@@ -237,6 +249,11 @@ trait ASTWalker {
       SameNameImportSpecifier(walk(info), walk(importedBinding))
     case RenamedImportSpecifier(info, importedBinding, idName) =>
       RenamedImportSpecifier(walk(info), walk(importedBinding), walk(idName))
+  }
+
+  def walk(node: ExportClause): ExportClause = node match {
+    case ExportClause(info, exportsList) =>
+      ExportClause(walk(info), exportsList.map(walk))
   }
 
   def walk(node: ImportClause): ImportClause = node match {

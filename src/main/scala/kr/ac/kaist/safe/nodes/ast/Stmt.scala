@@ -712,7 +712,7 @@ case class ExportAllFromOther(
 
 case class ExportFromOther(
     info: ASTNodeInfo,
-    exp: ExportClause,
+    export: ExportClause,
     from: FromClause
 ) extends ExportDeclaration {
   override def toString(indent: Int): String = "ExportFromOther"
@@ -720,7 +720,7 @@ case class ExportFromOther(
 
 case class ExportSelf(
     info: ASTNodeInfo,
-    exp: ExportClause
+    export: ExportClause
 ) extends ExportDeclaration {
   override def toString(indent: Int): String = "ExportFromSelf"
 }
@@ -732,13 +732,12 @@ case class ExportVarStmt(
   override def toString(indent: Int): String = "ExportVarStmt"
 }
 
-// TODO: "export Declaration"
-// this rule is for exporting class declarations and let/const declarations.
-//case class ExportDecl(
-//
-//) extends ExportDeclaration {
-//  override def toString(indent: Int)
-//}
+/* TODO:
+ * export Declaration
+ * export default HoistableDeclaration
+ * export default ClassDeclaration
+ * export default AssignmentExpression
+ */
 
 case class ExportClause(
     info: ASTNodeInfo,

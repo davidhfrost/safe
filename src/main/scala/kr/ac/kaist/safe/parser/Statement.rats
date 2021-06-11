@@ -420,8 +420,7 @@ private transient ExportDeclaration ExportDeclaration =
         yyValue = new ExportVarStmt(NodeUtil.makeASTNodeInfo(span), toList(vars));
     };
 
-  // TODO:
-  /*
+  /* TODO:
    * export Declaration
    * export default HoistableDeclaration
    * export default ClassDeclaration
