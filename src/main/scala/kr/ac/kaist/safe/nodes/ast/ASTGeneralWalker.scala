@@ -102,6 +102,22 @@ trait ASTGeneralWalker[Result] {
       join(walk(info) :: body.map(walk) ++ walkOpt(catchBlock) ++ walkOptList(fin): _*)
     case Debugger(info) =>
       walk(info)
+
+    // import statements
+    case FromImportDeclaration(info, imp, from) =>
+      join(walk(info), walk(imp), walk(from))
+    case ModuleImportDeclaration(info, moduleSpecifier) =>
+      join(walk(info), walk(moduleSpecifier))
+
+    // export statements
+    case ExportAllFromOther(info, from) =>
+      join(walk(info), walk(from))
+    case ExportFromOther(info, export, from) =>
+      join(walk(info), walk(export), walk(from))
+    case ExportSelf(info, export) =>
+      join(walk(info), walk(export))
+    case ExportVarStmt(info, vars) =>
+      join(walk(info) :: vars.map(walk): _*)
   }
 
   def walk(node: Expr): Result = node match {
@@ -239,5 +255,45 @@ trait ASTGeneralWalker[Result] {
   def walk(node: Functional): Result = node match {
     case Functional(info, fds, vds, stmts, name, params, body, isArrow) =>
       join(walk(info) :: fds.map(walk) ++ vds.map(walk) ++ List(walk(stmts), walk(name)) ++ params.map(walk): _*)
+  }
+
+  def walk(node: ImportSpecifier): Result = node match {
+    case SameNameImportSpecifier(info, importedBinding) =>
+      join(walk(info), walk(importedBinding))
+
+    case RenamedImportSpecifier(info, importedBinding, idName) =>
+      join(walk(info), walk(importedBinding), walk(idName))
+  }
+
+  def walk(node: ExportClause): Result = node match {
+    case ExportClause(info, exportsList) =>
+      join(walk(info) :: exportsList.map(walk): _*)
+  }
+
+  def walk(node: ImportClause): Result = node match {
+    case ImportedDefaultBinding(info, name) =>
+      join(walk(info), walk(name))
+
+    case NameSpaceImport(info, name) =>
+      join(walk(info), walk(name))
+
+    case NamedImports(info, importsList) =>
+      join(walk(info) :: importsList.map(walk): _*)
+
+    case DefaultAndNameSpaceImport(info, defaultImport, nameSpaceImport) =>
+      join(walk(info), walk(defaultImport), walk(nameSpaceImport))
+
+    case DefaultAndNamedImports(info, defaultImport, nameSpaceImport) =>
+      join(walk(info), walk(defaultImport), walk(nameSpaceImport))
+  }
+
+  def walk(node: ModuleSpecifier): Result = node match {
+    case ModuleSpecifier(info, moduleName) =>
+      join(walk(info), walk(moduleName))
+  }
+
+  def walk(node: FromClause): Result = node match {
+    case FromClause(info, moduleSpecifier) =>
+      join(walk(info), walk(moduleSpecifier))
   }
 }
