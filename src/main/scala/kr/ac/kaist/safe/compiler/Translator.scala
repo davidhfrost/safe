@@ -790,6 +790,10 @@ class Translator(program: Program) {
 
     case NoOp(_, desc) =>
       IRNoOp(s, desc)
+
+    case _ =>
+      println("unrecognized IRStmt: " + s.getClass)
+      IRNoOp(s, s.toString(0))
   }
 
   private def walkFunExpr(e: Expr, env: Env, res: IRId, lhs: Option[String]): (List[IRFunExpr], IRId) = e match {

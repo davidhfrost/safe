@@ -458,3 +458,102 @@ case class IRNoOp(
 ) extends IRStmt(ast) {
   override def toString(indent: Int): String = ""
 }
+
+// ES6 15.2.2: ImportDeclaration
+
+sealed trait IRImportDeclaration extends IRStmt
+
+case class IRFromImportDeclaration(
+    override val ast: ASTNode,
+    importClause: IRImportClause,
+    fromClause: IRFromClause
+) extends IRStmt(ast) with IRImportDeclaration {
+  override def toString(indent: Int): String =
+    "IRFromImportDeclaration"
+}
+
+case class IRModuleImportDeclaration(
+    override val ast: ASTNode,
+    moduleSpecifier: IRModuleSpecifier
+) extends IRStmt(ast) with IRImportDeclaration {
+  override def toString(indent: Int): String =
+    s"import ${moduleSpecifier.toString(0)}"
+}
+
+sealed trait IRImportClause extends IRNode
+
+case class IRImportedDefaultBinding(
+    override val ast: ASTNode,
+    name: IRId
+) extends IRNode(ast) with IRImportClause {
+  override def toString(indent: Int): String =
+    s"IRImportedDefaultBinding(${name.toString(indent)}"
+}
+
+case class IRNameSpaceImport(
+    override val ast: ASTNode,
+    name: IRId
+) extends IRNode(ast) {
+  override def toString(indent: Int): String =
+    s"IRNameSpaceImport(${name.toString(indent)}"
+}
+
+sealed trait IRImportSpecificer extends IRNode
+
+case class IRSameNameImportSpecifier(
+    override val ast: ASTNode,
+    importedBinding: IRId
+) extends IRNode(ast) with IRImportSpecificer {
+  def toString(indent: Int): String =
+    importedBinding.toString(indent)
+}
+
+case class IRRenamedImportSpecifier(
+    override val ast: ASTNode,
+    importedBinding: IRId,
+    identifierName: IRId
+) extends IRNode(ast) with IRImportSpecificer {
+  def toString(indent: Int): String =
+    s"${importedBinding.toString(0)} as ${identifierName.toString(0)}"
+}
+
+case class IRNamedImports(
+    override val ast: ASTNode,
+    importsList: List[IRImportSpecificer]
+) extends IRNode(ast) with IRImportClause {
+  override def toString(indent: Int): String =
+    s"{ ${importsList.mkString(", ")} }"
+}
+
+case class IRDefaultAndNameSpaceImport(
+    override val ast: ASTNode,
+    defaultImport: IRImportedDefaultBinding,
+    nameSpaceImport: IRNameSpaceImport
+) extends IRNode(ast) with IRImportClause {
+  override def toString(indent: Int): String =
+    s"${defaultImport.toString(indent)}, ${nameSpaceImport.toString(0)}}"
+}
+
+case class IRDefaultAndNamedImports(
+    override val ast: ASTNode,
+    defaultImport: IRImportedDefaultBinding,
+    namedImports: IRNamedImports
+) extends IRNode(ast) with IRImportClause {
+  override def toString(indent: Int): String =
+    s"${defaultImport.toString(0)}, ${namedImports.toString(0)}"
+}
+
+case class IRModuleSpecifier(
+    override val ast: ASTNode,
+    moduleName: String
+) extends IRNode(ast) {
+  override def toString(indent: Int): String = moduleName
+}
+
+case class IRFromClause(
+    override val ast: ASTNode,
+    moduleSpecifier: IRModuleSpecifier
+) extends IRNode(ast) {
+  override def toString(indent: Int): String =
+    s"from ${moduleSpecifier.toString(0)}"
+}
