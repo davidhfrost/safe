@@ -519,11 +519,43 @@ class Disambiguator(program: Program) {
         setEnv(oldEnv)
         result
 
+      case s @ FromImportDeclaration(info, importClause, fromClause) =>
+        FromImportDeclaration(info, walk(importClause), walk(fromClause))
+
       case _ =>
         val oldLEnv = setLEnv(node)
         val result = super.walk(node)
         resetLEnv(oldLEnv)
         result
+    }
+
+    // generate unique names for all imported IDs
+    override def walk(node: ImportClause): ImportClause = node match {
+      case ImportedDefaultBinding(info, name) =>
+        ImportedDefaultBinding(info, newId(name))
+      case NameSpaceImport(info, name) =>
+        NameSpaceImport(walk(info), newId(name))
+      case NamedImports(info, importsList) =>
+        NamedImports(walk(info), importsList.map(walk))
+      case DefaultAndNameSpaceImport(info, defaultImport, nameSpaceImport) =>
+        DefaultAndNameSpaceImport(
+          walk(info),
+          walk(defaultImport).asInstanceOf[ImportedDefaultBinding],
+          walk(nameSpaceImport).asInstanceOf[NameSpaceImport]
+        )
+      case DefaultAndNamedImports(info, defaultImport, nameSpaceImport) =>
+        DefaultAndNamedImports(
+          walk(info),
+          walk(defaultImport).asInstanceOf[ImportedDefaultBinding],
+          walk(nameSpaceImport).asInstanceOf[NamedImports]
+        )
+    }
+
+    override def walk(node: ImportSpecifier): ImportSpecifier = node match {
+      case SameNameImportSpecifier(info, importedBinding) =>
+        SameNameImportSpecifier(info, newId(importedBinding))
+      case RenamedImportSpecifier(info, importedBinding, idName) =>
+        RenamedImportSpecifier(walk(info), newId(importedBinding), newId(idName))
     }
 
     override def walk(node: Expr): Expr = node match {

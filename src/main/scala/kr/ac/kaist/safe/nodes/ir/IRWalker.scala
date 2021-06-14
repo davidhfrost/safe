@@ -11,6 +11,8 @@
 
 package kr.ac.kaist.safe.nodes.ir
 
+import kr.ac.kaist.safe.nodes.ast.FromImportDeclaration
+
 trait IRWalker {
   def walk(node: IRRoot): IRRoot = node match {
     case IRRoot(ast, fds, vds, irs) =>
@@ -70,6 +72,50 @@ trait IRWalker {
       IRTry(ast, walk(body), name.map(walk), catchB.map(walk), finallyB.map(walk))
     case IRNoOp(ast, desc) =>
       IRNoOp(ast, desc)
+
+    // import statements
+    case IRFromImportDeclaration(ast, importClause, fromClause) =>
+      IRFromImportDeclaration(ast, walk(importClause), walk(fromClause))
+    case IRModuleImportDeclaration(ast, moduleSpecifier) =>
+      IRModuleImportDeclaration(ast, walk(moduleSpecifier))
+  }
+
+  def walk(node: IRImportClause): IRImportClause = node match {
+    case IRImportedDefaultBinding(ast, name) =>
+      IRImportedDefaultBinding(ast, walk(name))
+    case IRNameSpaceImport(ast, name) =>
+      IRNameSpaceImport(ast, walk(name))
+    case IRNamedImports(ast, namedImports) =>
+      IRNamedImports(ast, namedImports.map(walk))
+    case IRDefaultAndNameSpaceImport(ast, defaultImport, nameSpaceImport) =>
+      IRDefaultAndNameSpaceImport(
+        ast,
+        walk(defaultImport).asInstanceOf[IRImportedDefaultBinding],
+        walk(nameSpaceImport).asInstanceOf[IRNameSpaceImport]
+      )
+    case IRDefaultAndNamedImports(ast, defaultImport, namedImports) =>
+      IRDefaultAndNamedImports(
+        ast,
+        walk(defaultImport).asInstanceOf[IRImportedDefaultBinding],
+        walk(namedImports).asInstanceOf[IRNamedImports]
+      )
+  }
+
+  def walk(node: IRImportSpecifier): IRImportSpecifier = node match {
+    case IRSameNameImportSpecifier(ast, importedBinding) =>
+      IRSameNameImportSpecifier(ast, walk(importedBinding))
+    case IRRenamedImportSpecifier(ast, importedBinding, idName) =>
+      IRRenamedImportSpecifier(ast, importedBinding, idName)
+  }
+
+  def walk(node: IRFromClause): IRFromClause = node match {
+    case IRFromClause(ast, moduleSpecifier) =>
+      IRFromClause(ast, walk(moduleSpecifier))
+  }
+
+  def walk(node: IRModuleSpecifier): IRModuleSpecifier = node match {
+    case IRModuleSpecifier(ast, moduleName) =>
+      IRModuleSpecifier(ast, walk(moduleName).asInstanceOf[IRVal])
   }
 
   def walk(node: IRExpr): IRExpr = node match {

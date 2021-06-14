@@ -469,7 +469,7 @@ case class IRFromImportDeclaration(
     fromClause: IRFromClause
 ) extends IRStmt(ast) with IRImportDeclaration {
   override def toString(indent: Int): String =
-    "IRFromImportDeclaration"
+    s"import ${importClause.toString(0)} ${fromClause.toString(0)}"
 }
 
 case class IRModuleImportDeclaration(
@@ -487,24 +487,24 @@ case class IRImportedDefaultBinding(
     name: IRId
 ) extends IRNode(ast) with IRImportClause {
   override def toString(indent: Int): String =
-    s"IRImportedDefaultBinding(${name.toString(indent)}"
+    name.toString(0)
 }
 
 case class IRNameSpaceImport(
     override val ast: ASTNode,
     name: IRId
-) extends IRNode(ast) {
+) extends IRNode(ast) with IRImportClause {
   override def toString(indent: Int): String =
-    s"IRNameSpaceImport(${name.toString(indent)}"
+    s"* as ${name.toString(0)}"
 }
 
-sealed trait IRImportSpecificer extends IRNode
+sealed trait IRImportSpecifier extends IRNode
 
 case class IRSameNameImportSpecifier(
     override val ast: ASTNode,
     importedBinding: IRId
-) extends IRNode(ast) with IRImportSpecificer {
-  def toString(indent: Int): String =
+) extends IRNode(ast) with IRImportSpecifier {
+  override def toString(indent: Int): String =
     importedBinding.toString(indent)
 }
 
@@ -512,17 +512,17 @@ case class IRRenamedImportSpecifier(
     override val ast: ASTNode,
     importedBinding: IRId,
     identifierName: IRId
-) extends IRNode(ast) with IRImportSpecificer {
-  def toString(indent: Int): String =
+) extends IRNode(ast) with IRImportSpecifier {
+  override def toString(indent: Int): String =
     s"${importedBinding.toString(0)} as ${identifierName.toString(0)}"
 }
 
 case class IRNamedImports(
     override val ast: ASTNode,
-    importsList: List[IRImportSpecificer]
+    importsList: List[IRImportSpecifier]
 ) extends IRNode(ast) with IRImportClause {
   override def toString(indent: Int): String =
-    s"{ ${importsList.mkString(", ")} }"
+    s"{ ${importsList.map(_.toString(0)).mkString(", ")} }"
 }
 
 case class IRDefaultAndNameSpaceImport(
@@ -531,7 +531,7 @@ case class IRDefaultAndNameSpaceImport(
     nameSpaceImport: IRNameSpaceImport
 ) extends IRNode(ast) with IRImportClause {
   override def toString(indent: Int): String =
-    s"${defaultImport.toString(indent)}, ${nameSpaceImport.toString(0)}}"
+    s"${defaultImport.toString(indent)}, ${nameSpaceImport.toString(0)}"
 }
 
 case class IRDefaultAndNamedImports(
@@ -545,9 +545,9 @@ case class IRDefaultAndNamedImports(
 
 case class IRModuleSpecifier(
     override val ast: ASTNode,
-    moduleName: String
+    moduleName: IRVal
 ) extends IRNode(ast) {
-  override def toString(indent: Int): String = moduleName
+  override def toString(indent: Int): String = moduleName.toString(indent)
 }
 
 case class IRFromClause(
