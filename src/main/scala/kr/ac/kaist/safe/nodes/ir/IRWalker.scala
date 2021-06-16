@@ -78,6 +78,17 @@ trait IRWalker {
       IRFromImportDeclaration(ast, walk(importClause), walk(fromClause))
     case IRModuleImportDeclaration(ast, moduleSpecifier) =>
       IRModuleImportDeclaration(ast, walk(moduleSpecifier))
+
+    // export statements
+    case IRExportAllFromOther(ast, from) =>
+      IRExportAllFromOther(ast, walk(from))
+    case IRExportFromOther(ast, export, from) =>
+      IRExportFromOther(ast, walk(export), walk(from))
+    case IRExportSelf(ast, export) =>
+      IRExportSelf(ast, walk(export))
+    case IRExportVarStmt(ast, vars) =>
+      IRExportVarStmt(ast, vars.map(walk).asInstanceOf[List[IRExprStmt]])
+
   }
 
   def walk(node: IRImportClause): IRImportClause = node match {
@@ -116,6 +127,11 @@ trait IRWalker {
   def walk(node: IRModuleSpecifier): IRModuleSpecifier = node match {
     case IRModuleSpecifier(ast, moduleName) =>
       IRModuleSpecifier(ast, walk(moduleName).asInstanceOf[IRVal])
+  }
+
+  def walk(node: IRExportClause): IRExportClause = node match {
+    case IRExportClause(ast, exportsList) =>
+      IRExportClause(ast, exportsList.map(walk))
   }
 
   def walk(node: IRExpr): IRExpr = node match {

@@ -891,8 +891,8 @@ class Translator(program: Program) {
     case ExportSelf(_, export) =>
       IRExportSelf(s, walkExportClause(export, env))
 
-    case ExportVarStmt(_, vars) =>
-      IRExportVarStmt(s, vars.map)
+    //    case ExportVarStmt(_, vars) =>
+    //      IRExportVarStmt(s, vars.map)
 
     case _ =>
       println("unrecognized IRStmt: " + s.getClass)

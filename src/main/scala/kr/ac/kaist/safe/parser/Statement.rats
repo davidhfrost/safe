@@ -381,7 +381,7 @@ private transient List<ImportSpecifier> ImportsList =
     { yyValue = cons(a1, a2s.list()); };
 
 private transient ImportSpecifier ImportSpecifier =
-  name:Id w "as" w binding:Id {
+  binding:Id w "as" w name:Id {
         Span span = createSpan(yyStart,yyCount);
         yyValue = new RenamedImportSpecifier(NodeUtil.makeASTNodeInfo(span), binding, name);
     }
