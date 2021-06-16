@@ -30,14 +30,18 @@ import Literal;
  *   ABlock
  * | var w VariableDeclarationList w ;
  * | ;
+ * | let w VariableDeclarationList w ;
+ * | ;
  * | [lookahead \not\in {{, function}] Expression w ;
  * | if w ( w Expression w ) w Statement w (else w Statement)?
  * | do w Statement w while w ( w Expression w ) w ;
  * | while w ( w Expression w ) w Statement
  * | for w ( (w ExpressionNoIn)? w ; (w Expression)? w ; (w Expression)? w ) Statement
  * | for w ( w var w VariableDeclarationListNoIn w ; (w Expression)? w ; (w Expression)? w ) w Statement
+ * | for w ( w let w VariableDeclarationListNoIn w ; (w Expression)? w ; (w Expression)? w ) w Statement
  * | for w ( w LeftHandSide w in w Expression w ) w Statement
  * | for w ( w var w VariableDeclarationNoIn w in w Expression w ) w Statement
+ * | for w ( w let w VariableDeclarationNoIn w in w Expression w ) w Statement
  * | continue (s Id)? w ;
  * | break (s Id)? w ;
  * | return (s Expression)? w ;
@@ -70,6 +74,19 @@ public Stmt Statement =
        yyValue = makeArrayNumberLiteral(span, a1, (Span)a2);
      }
    / var w a1:VariableDeclarationList EOS
+     { Span span = createSpan(yyStart,yyCount);
+       yyValue = new VarStmt(NodeUtil.makeASTNodeInfo(span), toList(a1));
+     }
+   / semicolon
+     { Span span = createSpan(yyStart,yyCount);
+       yyValue = new EmptyStmt(NodeUtil.makeASTNodeInfo(span));
+     }
+   / let w a1:Id w equals w
+     a2:(opensquare w NumericLiterals closesquare { yyValue = createSpan(yyStart,yyCount+1); }) EOS
+     { Span span = createSpan(yyStart,yyCount);
+       yyValue = makeArrayNumberLiteral(span, a1, (Span)a2);
+     }
+   / let w a1:VariableDeclarationList EOS
      { Span span = createSpan(yyStart,yyCount);
        yyValue = new VarStmt(NodeUtil.makeASTNodeInfo(span), toList(a1));
      }
@@ -124,12 +141,28 @@ public Stmt Statement =
        else            action = Some.<Expr>apply(a3);
        yyValue = new ForVar(NodeUtil.makeASTNodeInfo(span), toList(a1), cond, action, a4);
      }
+   / for w openparen w let w a1:VariableDeclarationListNoIn w semicolon
+     a2:(w Expression)? w semicolon a3:(w Expression)? w closeparen w a4:Statement
+     { Span span = createSpan(yyStart,yyCount);
+       Option<Expr> cond;
+       Option<Expr> action;
+       if (a2 == null) cond = Option.<Expr>apply(null);
+       else            cond = Some.<Expr>apply(a2);
+       if (a3 == null) action = Option.<Expr>apply(null);
+       else            action = Some.<Expr>apply(a3);
+       yyValue = new ForVar(NodeUtil.makeASTNodeInfo(span), toList(a1), cond, action, a4);
+     }
    / for w openparen w a1:LeftHandSide w in w a2:Expression w
      closeparen w a3:Statement
      { Span span = createSpan(yyStart,yyCount);
        yyValue = new ForIn(NodeUtil.makeASTNodeInfo(span), a1, a2, a3);
      }
    / for w openparen w var w a1:VariableDeclarationNoIn w in w a2:Expression w
+     closeparen w a3:Statement
+     { Span span = createSpan(yyStart,yyCount);
+       yyValue = new ForVarIn(NodeUtil.makeASTNodeInfo(span), a1, a2, a3);
+     }
+   / for w openparen w let w a1:VariableDeclarationNoIn w in w a2:Expression w
      closeparen w a3:Statement
      { Span span = createSpan(yyStart,yyCount);
        yyValue = new ForVarIn(NodeUtil.makeASTNodeInfo(span), a1, a2, a3);
@@ -416,6 +449,11 @@ private transient ExportDeclaration ExportDeclaration =
     }
 
   / "export" w "var" w vars:VariableDeclarationListNoIn {
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = new ExportVarStmt(NodeUtil.makeASTNodeInfo(span), toList(vars));
+    }
+
+  / "export" w "let" w vars:VariableDeclarationListNoIn {
         Span span = createSpan(yyStart,yyCount);
         yyValue = new ExportVarStmt(NodeUtil.makeASTNodeInfo(span), toList(vars));
     };
