@@ -557,3 +557,51 @@ case class IRFromClause(
   override def toString(indent: Int): String =
     s"from ${moduleSpecifier.toString(0)}"
 }
+
+// ES6 15.2.3: ExportDeclaration
+
+sealed trait IRExportDeclaration extends IRStmt
+
+case class IRExportAllFromOther(
+    override val ast: ASTNode,
+    from: IRFromClause
+) extends IRStmt(ast) with IRExportDeclaration {
+  override def toString(indent: Int): String =
+    s"export * from ${from.toString(0)}"
+}
+
+case class IRExportFromOther(
+    override val ast: ASTNode,
+    export: IRExportClause,
+    from: IRFromClause
+) extends IRStmt(ast) with IRExportDeclaration {
+  override def toString(indent: Int): String =
+    s"export ${export.toString(0)} ${from.toString(0)}"
+}
+
+case class IRExportSelf(
+    override val ast: ASTNode,
+    export: IRExportClause
+) extends IRStmt(ast) with IRExportDeclaration {
+  override def toString(indent: Int): String =
+    s"export ${export.toString(0)}"
+}
+
+case class IRExportVarStmt(
+    override val ast: ASTNode,
+    vars: List[IRExprStmt]
+) extends IRStmt(ast) with IRExportDeclaration {
+  override def toString(indent: Int): String =
+    s"export var ${vars.map(_.toString(0)).mkString(", ")}"
+}
+
+case class IRExportClause(
+    override val ast: ASTNode,
+    exportsList: List[IRImportSpecifier]
+) extends IRNode(ast) {
+  override def toString(indent: Int): String =
+    s"{ ${exportsList.map(_.toString(0)).mkString(", ")} }"
+
+  def this(namedImports: IRNamedImports) =
+    this(namedImports.ast, namedImports.importsList)
+}

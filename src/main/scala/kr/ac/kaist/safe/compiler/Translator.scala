@@ -869,16 +869,30 @@ class Translator(program: Program) {
     case NoOp(_, desc) =>
       IRNoOp(s, desc)
 
-    // translating import AST nodes to IR nodes
+    // translating import statement AST nodes to IR nodes
+    // (i.e. handling subclasses of `ImportDeclaration`)
     case FromImportDeclaration(_, importClause, fromClause) =>
       IRFromImportDeclaration(
         s,
         walkImportClause(importClause, env),
         walkFromClause(fromClause, env)
       )
-
     case ModuleImportDeclaration(_, moduleSpecifier) =>
       IRModuleImportDeclaration(s, walkModuleSpecifier(moduleSpecifier, env))
+
+    // translating import statement AST nodes to IR nodes
+    // (i.e. handling subclasses of `ExportDeclaration`)
+    case ExportAllFromOther(_, from) =>
+      IRExportAllFromOther(s, walkFromClause(from, env))
+
+    case ExportFromOther(_, export, from) =>
+      IRExportFromOther(s, walkExportClause(export, env), walkFromClause(from, env))
+
+    case ExportSelf(_, export) =>
+      IRExportSelf(s, walkExportClause(export, env))
+
+    case ExportVarStmt(_, vars) =>
+      IRExportVarStmt(s, vars.map)
 
     case _ =>
       println("unrecognized IRStmt: " + s.getClass)
@@ -926,6 +940,11 @@ class Translator(program: Program) {
   private def walkModuleSpecifier(ast: ModuleSpecifier, env: Env): IRModuleSpecifier = ast match {
     case ModuleSpecifier(_, StringLiteral(_, _, str, _)) =>
       IRModuleSpecifier(ast, IRVal(str))
+  }
+
+  private def walkExportClause(ast: ExportClause, env: Env): IRExportClause = ast match {
+    case ExportClause(_, exportsList) =>
+      IRExportClause(ast, exportsList.map(walkImportSpecifier(_, env)))
   }
 
   // `e`: the function expression node (`FunExpr`) being called
