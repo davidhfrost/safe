@@ -123,10 +123,9 @@ class Hoister(program: Program) {
       case ExportVarStmt(ast, vars) =>
         ExportVarStmt(ast, vars.map(walk))
 
-      // don't walk export statements besides the ones that
-      // declare variables
+      // only walk export statements that declare variables; skip others
       case node: ExportDeclaration => node
-        
+
       case _ => super.walk(node)
     }
 
@@ -553,8 +552,6 @@ class Hoister(program: Program) {
     private def isVdInFd(vd: VarDecl, ds: List[FunDecl]): Boolean =
       ds.exists(d => fd2Str(d).equals(vd2Str(vd)))
     private def hoist(body: List[Stmt], params: List[Id], strict: Boolean): (List[FunDecl], List[VarDecl], List[Stmt]) = {
-      println("hoisting body")
-      println(body.map(_.toString(3)).mkString("\n==\n"))
       val declarations = body.map(s => new HoistWalker(s).doit)
       // hoisted variable declarations
       val vds = declarations.map(_.varDecls).flatten

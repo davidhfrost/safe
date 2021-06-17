@@ -255,7 +255,6 @@ class Translator(program: Program) {
 
   // add to the environment
   private def addE(env: Env, x: String, xid: IRId): Env = {
-    println(s"addE: x=${x}, xid=${xid.toString(0)}")
     (x, xid) :: env
   }
 
@@ -356,7 +355,7 @@ class Translator(program: Program) {
     val oldIsLocal = isLocal
     val oldLocals = locals
 
-    println(s"translating functional ${name.toString(0)}")
+    //println(s"translating functional ${name.toString(0)}")
 
     // inside this new function, we have access to the locals of the outer scope (`oldLocals`),
     locals = oldLocals ++
