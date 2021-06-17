@@ -890,12 +890,24 @@ class Translator(program: Program) {
     case ExportSelf(_, export) =>
       IRExportSelf(s, walkExportClause(export, env))
 
-    //    case ExportVarStmt(_, vars) =>
-    //      IRExportVarStmt(s, vars.map)
+    case ExportVarStmt(_, vars) =>
+      val exprStmts = vars.map(walkExportedVarDecl(_, env))
+        .filter(_.isDefined)
+        .map(_.get)
+      IRExportVarStmt(s, exprStmts)
 
     case _ =>
       println("unrecognized IRStmt: " + s.getClass)
       IRNoOp(s, s.toString(0))
+  }
+
+  private def walkExportedVarDecl(ast: VarDecl, env: Env): Option[IRExprStmt] = ast match {
+    case VarDecl(_, id, None, _) =>
+      None
+    case VarDecl(_, id, Some(expr), strict) =>
+      val irId = defaultIRId(id)
+      val (_, irExpr) = walkExpr(expr, env, irId)
+      Some(IRExprStmt(ast, defaultIRId(id), irExpr))
   }
 
   private def walkImportClause(ast: ImportClause, env: Env): IRImportClause = ast match {
