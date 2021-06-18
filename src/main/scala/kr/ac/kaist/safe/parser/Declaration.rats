@@ -85,7 +85,20 @@ private List<Stmt> Stmts =
  */
 private Stmt Stmt =
      FunctionDeclaration
+   / ClassDeclaration
    / Statement ;
+
+Stmt ClassDeclaration = "class" w a1:Id w "{" w a2:ClassBody w "}" {
+    System.out.println("class name: " + a1.toString());
+    Span span = createSpan(yyStart,yyCount);
+    yyValue = new EmptyStmt(NodeUtil.makeASTNodeInfo(span));
+};
+
+Stmt ClassBody = a1:Id w openparen a2:(w Params)? w closeparen w a3:FunctionBody {
+    System.out.println("method name: " + a1.toString());
+    Span span = createSpan(yyStart,yyCount);
+    yyValue = new EmptyStmt(NodeUtil.makeASTNodeInfo(span));
+};
 
 /*
  * FunctionDeclaration ::= function w Id w ( (w Params)? w ) w FunctionBody
