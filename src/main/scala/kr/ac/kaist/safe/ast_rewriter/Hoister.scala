@@ -56,14 +56,24 @@ class Hoister(program: Program) {
     vds.find(v => vd2Str(v).equals(name) && toSpan(v).equals(span)).isDefined
   }
 
+  private case class Declarations(
+    varDecls: List[VarDecl],
+    funDecls: List[FunDecl],
+    varNames: List[(Span, String)],
+  )
+
   // Get the declared variable and function names and the names on lhs of assignments
   // in the current lexical scope
   private class HoistWalker(node: ASTNode) extends ASTWalker {
     var varDecls = List[VarDecl]()
     var funDecls = List[FunDecl]()
     var varNames = List[(Span, String)]()
-    def doit(): (List[VarDecl], List[FunDecl], List[(Span, String)]) =
-      { walk(node); (varDecls, funDecls, varNames) }
+
+    // helper method to wrap an identifier in an uninitialized `VarDecl`
+    def idToDecl(id: Id): VarDecl = VarDecl(id.info, id, None, false)
+
+    def doit(): Declarations =
+      { walk(node); Declarations(varDecls, funDecls, varNames) }
 
     override def walk(node: FunDecl): FunDecl = node match {
       case fd: FunDecl =>
@@ -109,7 +119,36 @@ class Hoister(program: Program) {
         val walkedVd = walk(vd)
         inFor = oldInFor
         ForVarIn(info, walkedVd, walk(expr), walk(body))
+
+      case ExportVarStmt(ast, vars) =>
+        ExportVarStmt(ast, vars.map(walk))
+
+      // only walk export statements that declare variables; skip others
+      case node: ExportDeclaration => node
+
       case _ => super.walk(node)
+    }
+
+    // capture identifiers that will receive imported values
+    override def walk(node: ImportSpecifier): ImportSpecifier = node match {
+      case SameNameImportSpecifier(_, id) =>
+        varDecls ++= List(idToDecl(id))
+        super.walk(node)
+      case RenamedImportSpecifier(_, _, id) =>
+        varDecls ++= List(idToDecl(id))
+        super.walk(node)
+    }
+
+    // capture identifiers that will receive imported values
+    override def walk(node: ImportClause): ImportClause = {
+      node match {
+        case ImportedDefaultBinding(info, name) =>
+          varDecls ++= List(idToDecl(name))
+        case NameSpaceImport(info, name) =>
+          varDecls ++= List(idToDecl(name))
+        case _ => ()
+      }
+      super.walk(node)
     }
   }
 
@@ -491,8 +530,10 @@ class Hoister(program: Program) {
   private object HoistTopWalker extends ASTWalker {
     // utility functions
     private def assignOp(info: ASTNodeInfo): Op = Op(info, "=")
+
     private def assignS(i: ASTNodeInfo, name: Id, expr: Expr): ExprStmt =
       ExprStmt(i, walk(AssignOpApp(i, VarRef(i, name), assignOp(i), expr)), true)
+
     private def hoistVds(vds: List[VarDecl]): List[Stmt] =
       vds.foldRight(List[Stmt]())((vd, res) => vd match {
         case VarDecl(_, _, None, _) => res
@@ -511,12 +552,12 @@ class Hoister(program: Program) {
     private def isVdInFd(vd: VarDecl, ds: List[FunDecl]): Boolean =
       ds.exists(d => fd2Str(d).equals(vd2Str(vd)))
     private def hoist(body: List[Stmt], params: List[Id], strict: Boolean): (List[FunDecl], List[VarDecl], List[Stmt]) = {
-      val (vdss, fdss, varss) = body.map(s => new HoistWalker(s).doit).unzip3
+      val declarations = body.map(s => new HoistWalker(s).doit)
       // hoisted variable declarations
-      val vds = vdss.flatten
+      val vds = declarations.map(_.varDecls).flatten
       // hoisted function declarations
-      val fds = fdss.flatten.map(walk)
-      val vars = varss.flatten
+      val fds = declarations.map(_.funDecls).flatten.map(walk)
+      val vars = declarations.map(_.varNames).flatten
       // duplicated variable declarations removed
       // first-come wins
       val vdsUniq = vds.foldLeft(List[VarDecl]())((res, vd) =>
@@ -590,6 +631,7 @@ class Hoister(program: Program) {
     }
 
     override def walk(node: Stmt): Stmt = node match {
+      //case ExportVarStmt(info, vars) => stmtUnit(info, hoistVds(vars))
       case VarStmt(info, vds) => stmtUnit(info, hoistVds(vds))
       case ForVar(info, vars, cond, action, body) =>
         val newInfo = ASTNodeInfo(Span.merge(vars, Span()))

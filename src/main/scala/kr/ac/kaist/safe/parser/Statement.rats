@@ -342,7 +342,7 @@ private transient List<Stmt> Finally =
 // ES6 15.2.2: ImportDeclaration
 
 private transient ImportDeclaration ImportDeclaration =
-    "import" w imp:ImportClause w from:FromClause {
+    "import" w imp:ImportClause w from:FromClause {  // import ImportClause FromClause
         Span span = createSpan(yyStart,yyCount);
         yyValue = new FromImportDeclaration(NodeUtil.makeASTNodeInfo(span), imp, from);
     }
@@ -414,7 +414,7 @@ private transient List<ImportSpecifier> ImportsList =
     { yyValue = cons(a1, a2s.list()); };
 
 private transient ImportSpecifier ImportSpecifier =
-  name:Id w "as" w binding:Id {
+  binding:Id w "as" w name:Id {
         Span span = createSpan(yyStart,yyCount);
         yyValue = new RenamedImportSpecifier(NodeUtil.makeASTNodeInfo(span), binding, name);
     }
