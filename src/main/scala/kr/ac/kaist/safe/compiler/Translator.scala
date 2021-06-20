@@ -871,11 +871,11 @@ class Translator(program: Program) {
     // translating import statement AST nodes to IR nodes
     // (i.e. handling subclasses of `ImportDeclaration`)
     case FromImportDeclaration(_, importClause, fromClause) =>
-      IRFromImportDeclaration(
-        s,
-        walkImportClause(importClause, env),
-        walkFromClause(fromClause, env)
-      )
+      val irClauses = walkImportClause(importClause, env)
+      val irFrom = walkFromClause(fromClause, env)
+      val irDecls = irClauses.map(IRFromImportDeclaration(s, _, irFrom))
+      IRStmtUnit(s, irDecls: _*)
+
     case ModuleImportDeclaration(_, moduleSpecifier) =>
       IRModuleImportDeclaration(s, walkModuleSpecifier(moduleSpecifier, env))
 
@@ -910,37 +910,35 @@ class Translator(program: Program) {
       Some(IRExprStmt(ast, defaultIRId(id), irExpr))
   }
 
-  private def walkImportClause(ast: ImportClause, env: Env): IRImportClause = ast match {
+  private def walkImportClause(ast: ImportClause, env: Env): List[IRImportClause] = ast match {
     case ImportedDefaultBinding(_, name) =>
-      IRImportedDefaultBinding(ast, id2ir(env, name))
+      List(IRImportedDefaultBinding(ast, id2ir(env, name)))
 
     case NameSpaceImport(_, name) =>
-      IRNameSpaceImport(ast, id2ir(env, name))
+      List(IRNameSpaceImport(ast, id2ir(env, name)))
 
     case NamedImports(_, importsList) =>
-      IRNamedImports(ast, importsList.map(walkImportSpecifier(_, env)))
+      List(IRNamedImports(ast, importsList.map(walkImportSpecifier(_, env))))
 
     case DefaultAndNameSpaceImport(_, defaultImport, nameSpaceImport) =>
-      IRDefaultAndNameSpaceImport(
-        ast,
-        walkImportClause(defaultImport, env).asInstanceOf[IRImportedDefaultBinding],
-        walkImportClause(nameSpaceImport, env).asInstanceOf[IRNameSpaceImport]
+      List(
+        IRImportedDefaultBinding(defaultImport, id2ir(env, defaultImport.name)),
+        IRNameSpaceImport(nameSpaceImport, id2ir(env, nameSpaceImport.name))
       )
 
     case DefaultAndNamedImports(_, defaultImport, namedImports) =>
-      IRDefaultAndNamedImports(
-        ast,
-        walkImportClause(defaultImport, env).asInstanceOf[IRImportedDefaultBinding],
-        walkImportClause(namedImports, env).asInstanceOf[IRNamedImports]
+      List(
+        IRImportedDefaultBinding(defaultImport, id2ir(env, defaultImport.name)),
+        IRNamedImports(namedImports, namedImports.importsList.map(walkImportSpecifier(_, env)))
       )
   }
 
   private def walkImportSpecifier(ast: ImportSpecifier, env: Env): IRImportSpecifier = ast match {
     case SameNameImportSpecifier(_, importedBinding) =>
-      IRSameNameImportSpecifier(ast, id2ir(env, importedBinding))
+      IRSameNameSpecifier(ast, id2ir(env, importedBinding))
 
     case RenamedImportSpecifier(_, importedBinding, identifierName) =>
-      IRRenamedImportSpecifier(ast, id2ir(env, importedBinding), id2ir(env, identifierName))
+      IRRenamedSpecifier(ast, id2ir(env, importedBinding), id2ir(env, identifierName))
   }
 
   private def walkFromClause(ast: FromClause, env: Env): IRFromClause = ast match {

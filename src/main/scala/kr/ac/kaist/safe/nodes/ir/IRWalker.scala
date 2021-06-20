@@ -98,25 +98,13 @@ trait IRWalker {
       IRNameSpaceImport(ast, walk(name))
     case IRNamedImports(ast, namedImports) =>
       IRNamedImports(ast, namedImports.map(walk))
-    case IRDefaultAndNameSpaceImport(ast, defaultImport, nameSpaceImport) =>
-      IRDefaultAndNameSpaceImport(
-        ast,
-        walk(defaultImport).asInstanceOf[IRImportedDefaultBinding],
-        walk(nameSpaceImport).asInstanceOf[IRNameSpaceImport]
-      )
-    case IRDefaultAndNamedImports(ast, defaultImport, namedImports) =>
-      IRDefaultAndNamedImports(
-        ast,
-        walk(defaultImport).asInstanceOf[IRImportedDefaultBinding],
-        walk(namedImports).asInstanceOf[IRNamedImports]
-      )
   }
 
   def walk(node: IRImportSpecifier): IRImportSpecifier = node match {
-    case IRSameNameImportSpecifier(ast, importedBinding) =>
-      IRSameNameImportSpecifier(ast, walk(importedBinding))
-    case IRRenamedImportSpecifier(ast, importedBinding, idName) =>
-      IRRenamedImportSpecifier(ast, importedBinding, idName)
+    case IRSameNameSpecifier(ast, importedBinding) =>
+      IRSameNameSpecifier(ast, walk(importedBinding))
+    case IRRenamedSpecifier(ast, importedBinding, idName) =>
+      IRRenamedSpecifier(ast, importedBinding, idName)
   }
 
   def walk(node: IRFromClause): IRFromClause = node match {
