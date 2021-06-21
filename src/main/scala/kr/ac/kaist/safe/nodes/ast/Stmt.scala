@@ -760,3 +760,16 @@ case class ExportClause(
   // alternative constructor
   def this(namedImports: NamedImports) = this(namedImports.info, namedImports.importsList)
 }
+
+// new App()
+
+case class ClassDeclaration(
+    info: ASTNodeInfo,
+    name: Id,
+    // methods: List[FunDecl]
+) extends Stmt {
+  override def toString(indent: Int): String =
+    s"class ${name.toString(0)} {\n" +
+      //      methods.map(_.toString(0)).mkString("\n") + "\n" +
+      "}"
+}

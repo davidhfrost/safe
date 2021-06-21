@@ -88,14 +88,28 @@ private Stmt Stmt =
    / ClassDeclaration
    / Statement ;
 
-Stmt ClassDeclaration = "class" w a1:Id w "{" w a2:ClassBody w "}" {
-    System.out.println("class name: " + a1.toString());
+/*
+ *   class App {
+ *      methodName() {  ...  }
+ *   }
+ *
+ *   function App() {  ... constructor ... }            // FunctionDeclaration
+ *   App.prototype.methodName = function() { ... }      // ExprStmt
+ */
+
+Stmt ClassDeclaration = "class" w className:Id w "{" w a2:ClassBody w "}" {
+    //System.out.println("class name: " + a1.toString());
     Span span = createSpan(yyStart,yyCount);
-    yyValue = new EmptyStmt(NodeUtil.makeASTNodeInfo(span));
+
+    yyValue = new ClassDeclaration(
+        NodeUtil.makeASTNodeInfo(span),
+        className
+        //methods
+    );
 };
 
+
 Stmt ClassBody = a1:Id w openparen a2:(w Params)? w closeparen w a3:FunctionBody {
-    System.out.println("method name: " + a1.toString());
     Span span = createSpan(yyStart,yyCount);
     yyValue = new EmptyStmt(NodeUtil.makeASTNodeInfo(span));
 };
