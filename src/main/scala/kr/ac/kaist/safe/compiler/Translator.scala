@@ -896,6 +896,13 @@ class Translator(program: Program) {
         .map(_.get)
       IRExportVarStmt(s, exprStmts)
 
+    case ExportDefaultAssignmentStmt(_, assign) =>
+      assign match {
+        case FunExpr(_, ftn) =>
+          val (fn :: rest, _) = walkFunExpr(assign, env, freshId, None)
+          IRExportDefaultStmt(s, fn)
+      }
+
     case _ =>
       println("unrecognized IRStmt: " + s.getClass)
       IRNoOp(s, s.toString(0))

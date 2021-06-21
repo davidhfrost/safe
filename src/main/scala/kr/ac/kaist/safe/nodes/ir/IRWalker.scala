@@ -88,7 +88,8 @@ trait IRWalker {
       IRExportSelf(ast, walk(export))
     case IRExportVarStmt(ast, vars) =>
       IRExportVarStmt(ast, vars.map(walk).asInstanceOf[List[IRExprStmt]])
-
+    case IRExportDefaultStmt(ast, stmt) =>
+      IRExportDefaultStmt(ast, walk(stmt))
   }
 
   def walk(node: IRImportClause): IRImportClause = node match {

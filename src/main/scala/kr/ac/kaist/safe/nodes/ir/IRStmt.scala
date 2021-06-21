@@ -577,6 +577,14 @@ case class IRExportVarStmt(
     s"export var ${vars.map(_.toString(0)).mkString(", ")}"
 }
 
+case class IRExportDefaultStmt(
+    override val ast: ASTNode,
+    stmt: IRStmt
+) extends IRStmt(ast) with IRExportDeclaration {
+  override def toString(indent: Int): String =
+    s"export default ${stmt.toString(0)}"
+}
+
 case class IRExportClause(
     override val ast: ASTNode,
     exportsList: List[IRImportSpecifier]

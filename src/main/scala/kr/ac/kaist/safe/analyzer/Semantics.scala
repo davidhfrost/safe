@@ -624,7 +624,7 @@ case class Semantics(
         (st, excSt)
 
       case _ =>
-        println("unrecognized instruction " + i.toString)
+        println("unrecognized instruction " + i.toString())
         (st, excSt)
     }
   }

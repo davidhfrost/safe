@@ -736,11 +736,18 @@ case class ExportVarStmt(
     s"export var ${vars.map(_.toString(0)).mkString(", ")}"
 }
 
+case class ExportDefaultAssignmentStmt(
+    info: ASTNodeInfo,
+    assign: Expr
+) extends ExportDeclaration {
+  override def toString(indent: Int): String =
+    s"export default ${assign.toString(0)}"
+}
+
 /* TODO:
  * export Declaration
  * export default HoistableDeclaration
  * export default ClassDeclaration
- * export default AssignmentExpression
  */
 
 case class ExportClause(

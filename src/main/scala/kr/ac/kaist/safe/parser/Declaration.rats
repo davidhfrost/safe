@@ -170,7 +170,7 @@ public LHS FunctionExpr =
 
 // added
 
-private transient void ARROW = "=>" !(idrest);
+private transient void ARROW = "=>";
 
 public LHS ArrowFunction =
     a2:ArrowParameters w ARROW w a3:ConciseBody

@@ -642,6 +642,18 @@ class DefaultCFGBuilder(
 
         (List(tailBlock), lmap.updated(ThrowLabel, (ThrowLabel of lmap) + tailBlock))
 
+      case IRExportDefaultStmt(ast, stmt) =>
+        val tailBlock: NormalBlock = getTail(blocks, func)
+
+        translateStmt(stmt, func, blocks, lmap)
+
+        stmt match {
+          case IRFunExpr(_, lhs, fun) =>
+            tailBlock.createInst(CFGDefaultExport(stmt, _, id2cfgId(lhs)))
+        }
+
+        (List(tailBlock), lmap.updated(ThrowLabel, (ThrowLabel of lmap) + tailBlock))
+
       case _ => {
         excLog.signal(IRIgnored(stmt))
         (blocks, lmap)

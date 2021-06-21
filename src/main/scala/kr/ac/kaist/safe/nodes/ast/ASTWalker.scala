@@ -104,6 +104,8 @@ trait ASTWalker {
       ExportSelf(walk(info), walk(export))
     case ExportVarStmt(info, vars) =>
       ExportVarStmt(walk(info), vars.map(walk))
+    case ExportDefaultAssignmentStmt(info, assign) =>
+      ExportDefaultAssignmentStmt(walk(info), walk(assign))
   }
 
   def walk(node: Expr): Expr = node match {
