@@ -44,6 +44,17 @@ case class Semantics(
   // abstract boolean
   private val AB = AbsBool.Bot
 
+  // exported values
+  val exports: MMap[String, AbsExportValue] = MMap()
+  var defaultExport: Option[AbsExportValue] = None
+
+  def getExport(cp: ControlPoint, name: String): AbsValue =
+    exports(name).getValue(this, cp)
+  def getDefaultExport(cp: ControlPoint): AbsValue = defaultExport match {
+    case Some(expVal) => expVal.getValue(this, cp)
+    case None => AbsValue.Bot
+  }
+
   // call control point to CallInfo
   // Call -> TracePartition -> CallInfo
   private val ccpToCallInfo: MMap[Call, MMap[TracePartition, CallInfo]] = MMap()
@@ -594,6 +605,27 @@ case class Semantics(
       case CFGInternalCall(ir, _, lhs, name, arguments, loc) =>
         IC(cp, ir, lhs, name, arguments, loc, st, excSt)
       case CFGNoOp(_, _, _) => (st, excSt)
+
+      case CFGNameSpaceImport(_, _, importedFile, binding) =>
+        (st, excSt)
+
+      case CFGDefaultImport(_, _, importedFile, binding) =>
+        (st, excSt)
+
+      case CFGImport(_, _, importedFile, binding, importName) =>
+        (st, excSt)
+
+      case CFGDefaultExport(_, _, binding) =>
+        defaultExport = Some(ExportedId(binding))
+        (st, excSt)
+
+      case CFGExport(_, _, binding, exportName) =>
+        exports(exportName.text) = ExportedId(binding)
+        (st, excSt)
+
+      case _ =>
+        println("unrecognized instruction " + i.toString)
+        (st, excSt)
     }
   }
 
@@ -1950,4 +1982,27 @@ case class CallInfo(state: AbsState, thisVal: AbsValue, argVal: AbsValue) {
   override def toString: String = {
     s"this: ${thisVal}, args: ${argVal}"
   }
+}
+
+// an exported value can either be an expression or a variable (identifier)
+sealed trait AbsExportValue {
+  def getValue(sem: Semantics, cp: ControlPoint): AbsValue
+}
+
+case class ExportedExpr(expr: CFGExpr) extends AbsExportValue {
+  override def getValue(sem: Semantics, cp: ControlPoint): AbsValue = {
+    val (result, _) = sem.V(expr, sem.getState(cp))
+    result
+  }
+
+  override def toString = expr.toString(0)
+}
+
+case class ExportedId(id: CFGId) extends AbsExportValue {
+  override def getValue(sem: Semantics, cp: ControlPoint): AbsValue = {
+    val (result, _) = sem.getState(cp).lookup(id)
+    result
+  }
+
+  override def toString = id.toString
 }
