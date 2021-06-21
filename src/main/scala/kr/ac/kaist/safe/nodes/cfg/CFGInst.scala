@@ -202,19 +202,19 @@ case class CFGNoOp(
 }
 
 case class CFGNameSpaceImport(
-  ir: IRNode,
-  block: NormalBlock,
-  importedFile: String,
-  binding: CFGId // the identifier receiving the imported name space
+    ir: IRNode,
+    block: NormalBlock,
+    importedFile: String,
+    binding: CFGId // the identifier receiving the imported name space
 ) extends CFGNormalInst {
   override def toString: String = s"import(* as $binding)"
 }
 
 case class CFGDefaultImport(
-  ir: IRNode,
-  block: NormalBlock,
-  importedFile: String,
-  binding: CFGId // the identifier receiving the imported default value
+    ir: IRNode,
+    block: NormalBlock,
+    importedFile: String,
+    binding: CFGId // the identifier receiving the imported default value
 ) extends CFGNormalInst {
   override def toString: String = s"import(default as $binding)"
 }
@@ -224,7 +224,7 @@ case class CFGImport(
     block: NormalBlock,
     importedFile: String,
     binding: CFGId, // the identifier receiving the imported value
-    importName: CFGId // the name of the export in the source file
+    importName: String // the name of the export in the source file
 ) extends CFGNormalInst {
   override def toString: String = s"import($importName as $binding)"
 }
@@ -232,7 +232,7 @@ case class CFGImport(
 case class CFGDefaultExport(
     ir: IRNode,
     block: NormalBlock,
-    binding: CFGId, // the identifier containing the default exported value
+    binding: CFGId // the identifier containing the default exported value
 ) extends CFGNormalInst {
   override def toString: String = s"export($binding as default)"
 }

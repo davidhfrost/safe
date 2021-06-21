@@ -19,10 +19,13 @@ import kr.ac.kaist.safe.analyzer.model._
 import kr.ac.kaist.safe.nodes.ir._
 import kr.ac.kaist.safe.nodes.cfg._
 import kr.ac.kaist.safe.util.{ AllocSite, EJSBool, EJSNull, EJSNumber, EJSString, EJSUndef, NodeUtil, Old, PredAllocSite, Recency, Recent, UserAllocSite }
-import kr.ac.kaist.safe.LINE_SEP
+import kr.ac.kaist.safe.{ CmdAnalyze, CmdCFGBuild, LINE_SEP }
 import kr.ac.kaist.safe.analyzer.domain.react.{ CompDesc, ReactHelper, ReactState }
+import kr.ac.kaist.safe.phase.{ Analyze, HeapBuild }
+import scala.util.{ Success, Try }
 
 import scala.collection.mutable.{ Map => MMap }
+import scala.util.{ Failure, Success }
 
 case class Semantics(
     cfg: CFG,
@@ -44,15 +47,49 @@ case class Semantics(
   // abstract boolean
   private val AB = AbsBool.Bot
 
+  // analyses of imported files
+  type AnalysisData = (CFG, Int, TracePartition, Semantics)
+  // an import is identified by (source file name, export name in the source file)
+  type ImportId = (String, String)
+  // maps each imported `CFGId` to its source file name and import
+  var importedNames: MMap[CFGId, ImportId] = MMap()
+  // maps each source file name to its analysis data
+  val importedFiles: MMap[String, AnalysisData] = MMap()
+
+  private def importFile(fileName: String): AnalysisData = importedFiles.get(fileName) match {
+    // if `fileName` has already been imported, do nothing.
+    case Some(value) => value
+
+    // if `fileName` isn't present in `importedFiles`, we import it for the first time here.
+    case None => {
+      // run the `Analyze` command on the file to compute its exported values.
+      val analysisResult: Try[AnalysisData] = CmdAnalyze(List("-silent", fileName), false)
+
+      analysisResult match {
+        case Failure(exception) =>
+          throw new Error(s"failure analyzing imported file ${fileName}")
+        case Success(data) =>
+          importedFiles(fileName) = data
+          data
+      }
+    }
+  }
+
+  private def getImportValue(fileName: String, name: String): (AbsValue, Set[Exception]) = {
+    val (cfg, _, globalTP, sem) = importFile(fileName)
+    val exitCP = ControlPoint(cfg.globalFunc.exit, globalTP)
+    sem.getExport(exitCP, name)
+  }
+
   // exported values
   val exports: MMap[String, AbsExportValue] = MMap()
   var defaultExport: Option[AbsExportValue] = None
 
-  def getExport(cp: ControlPoint, name: String): AbsValue =
+  def getExport(cp: ControlPoint, name: String): (AbsValue, Set[Exception]) =
     exports(name).getValue(this, cp)
-  def getDefaultExport(cp: ControlPoint): AbsValue = defaultExport match {
+  def getDefaultExport(cp: ControlPoint): (AbsValue, Set[Exception]) = defaultExport match {
     case Some(expVal) => expVal.getValue(this, cp)
-    case None => AbsValue.Bot
+    case None => (AbsValue.Bot, Set())
   }
 
   // call control point to CallInfo
@@ -613,7 +650,13 @@ case class Semantics(
         (st, excSt)
 
       case CFGImport(_, _, importedFile, binding, importName) =>
-        (st, excSt)
+        importedNames(binding) = (importedFile, importName)
+        val (v, _) = getImportValue(importedFile, importName)
+        val nextSt =
+          if (!v.isBottom) st.varStore(binding, v)
+          else AbsState.Bot
+
+        (nextSt, excSt)
 
       case CFGDefaultExport(_, _, binding) =>
         defaultExport = Some(ExportedId(binding))
@@ -1800,7 +1843,14 @@ case class Semantics(
   // compute the abstract value of `expr` in the abstract state `st`.
   // returns a value and a set of possible exceptions occurring during computation.
   def V(expr: CFGExpr, st: AbsState): (AbsValue, Set[Exception]) = expr match {
-    case CFGVarRef(ir, id) => st.lookup(id)
+    case CFGVarRef(ir, id) => {
+      println("CFGVarRef: " + id)
+      println("in importedNames: " + importedNames.get(id))
+      importedNames.get(id) match {
+        case Some((importFile, importName)) => getImportValue(importFile, importName)
+        case None => st.lookup(id)
+      }
+    }
     case CFGLoad(ir, obj, index) => {
       val (objV, _) = V(obj, st)
       val (idxV, idxExcSet) = V(index, st)
@@ -1986,23 +2036,19 @@ case class CallInfo(state: AbsState, thisVal: AbsValue, argVal: AbsValue) {
 
 // an exported value can either be an expression or a variable (identifier)
 sealed trait AbsExportValue {
-  def getValue(sem: Semantics, cp: ControlPoint): AbsValue
+  def getValue(sem: Semantics, cp: ControlPoint): (AbsValue, Set[Exception])
 }
 
 case class ExportedExpr(expr: CFGExpr) extends AbsExportValue {
-  override def getValue(sem: Semantics, cp: ControlPoint): AbsValue = {
-    val (result, _) = sem.V(expr, sem.getState(cp))
-    result
-  }
+  override def getValue(sem: Semantics, cp: ControlPoint): (AbsValue, Set[Exception]) =
+    sem.V(expr, sem.getState(cp))
 
   override def toString = expr.toString(0)
 }
 
 case class ExportedId(id: CFGId) extends AbsExportValue {
-  override def getValue(sem: Semantics, cp: ControlPoint): AbsValue = {
-    val (result, _) = sem.getState(cp).lookup(id)
-    result
-  }
+  override def getValue(sem: Semantics, cp: ControlPoint): (AbsValue, Set[Exception]) =
+    sem.getState(cp).lookup(id)
 
   override def toString = id.toString
 }

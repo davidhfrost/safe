@@ -689,7 +689,7 @@ class DefaultCFGBuilder(
         case IRNamedImports(_, importsList) =>
           importsList.foreach(imp => {
             val (nameId, bindingId) = translateSpecifierIds(imp)
-            tailBlock.createInst(CFGImport(s, _, importedFile, bindingId, nameId))
+            tailBlock.createInst(CFGImport(s, _, importedFile, bindingId, nameId.text))
           })
       }
 
