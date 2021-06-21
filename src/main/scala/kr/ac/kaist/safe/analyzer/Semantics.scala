@@ -81,6 +81,12 @@ case class Semantics(
     sem.getExport(exitCP, name)
   }
 
+  private def getImportFileState(fileName: String): AbsState = {
+    val (cfg, _, globalTP, sem) = importFile(fileName)
+    val exitCP = ControlPoint(cfg.globalFunc.exit, globalTP)
+    sem.getState(exitCP)
+  }
+
   // exported values
   val exports: MMap[String, AbsExportValue] = MMap()
   var defaultExport: Option[AbsExportValue] = None
@@ -650,8 +656,28 @@ case class Semantics(
         (st, excSt)
 
       case CFGImport(_, _, importedFile, binding, importName) =>
+
         importedNames(binding) = (importedFile, importName)
+        val (importCfg, _, _, importSem) = importFile(importedFile)
+        val importSt = getImportFileState(importedFile)
         val (v, _) = getImportValue(importedFile, importName)
+
+        // compute the set of all fids which the imported value may reference.
+        val importFids = v.locset.foldLeft(AbsFId(FidSetEmpty))((allFids, loc) => {
+          val importFunObj = importSt.heap.get(loc)
+          allFids ⊔ importFunObj(IConstruct).fidset ⊔ importFunObj(ICall).fidset
+        })
+
+        importFids.foreach(fid => {
+          importCfg.getFunc(fid) match {
+            case None => ()
+            case Some(fn) =>
+              //println(s"fn $fid:")
+              //println(fn.toString(0))
+              cfg.addJSModel(fn)
+          }
+        })
+
         val nextSt =
           if (!v.isBottom) st.varStore(binding, v)
           else AbsState.Bot
@@ -1708,7 +1734,11 @@ case class Semantics(
     val tp = cp.tracePartition
     val loc = Loc(i.asite, tp)
     val st1 = st.alloc(loc)
+    //println("internalCI")
+    //println("i.fun: " + i.fun)
     val (funVal, funExcSet) = V(i.fun, st1)
+    //println("funVal: " + funVal)
+    //funVal.locset.foreach(loc => println("loc: " + loc))
 
     // compute the possible locations of the function being called based on the type of call instruction.
     val funLocSet = i match {
@@ -1844,10 +1874,12 @@ case class Semantics(
   // returns a value and a set of possible exceptions occurring during computation.
   def V(expr: CFGExpr, st: AbsState): (AbsValue, Set[Exception]) = expr match {
     case CFGVarRef(ir, id) => {
-      println("CFGVarRef: " + id)
-      println("in importedNames: " + importedNames.get(id))
       importedNames.get(id) match {
-        case Some((importFile, importName)) => getImportValue(importFile, importName)
+        case Some((importFile, importName)) => {
+          val result = getImportValue(importFile, importName)
+          //println("imported value result: " + result)
+          result
+        }
         case None => st.lookup(id)
       }
     }
