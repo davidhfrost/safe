@@ -67,7 +67,7 @@ transient void switch = "switch" !(idrest);
 transient void this = "this" !(idrest);
 transient void throw = "throw" !(idrest);
 transient void try = "try" !(idrest);
-transient void var = "var" !(idrest);
+transient void var = ("var" / "let" / "const") !(idrest);
 transient void while = "while" !(idrest);
 transient void with = "with" !(idrest);
 
