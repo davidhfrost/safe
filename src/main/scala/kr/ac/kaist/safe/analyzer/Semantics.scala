@@ -58,6 +58,7 @@ case class Semantics(
   val importedFiles: MMap[String, AnalysisData] = MMap()
   var numImportedFiles: Int = 0
   val fidsPerFile: Int = 1000
+  val userAsitesPerFile: Int = 10000
 
   private def uniqueImportedFid(sourceFile: String, fid: FunctionId): FunctionId = {
     val fileIdx = importedFiles.keys.toList.indexOf(sourceFile)
@@ -82,6 +83,7 @@ case class Semantics(
       numImportedFiles += 1
       val cfgBuildConfig = CFGBuild.defaultConfig
       cfgBuildConfig.initFIdCount = numImportedFiles * fidsPerFile
+      cfgBuildConfig.initUserAsiteSize = numImportedFiles * userAsitesPerFile
       val importCFG: Try[CFG] = ir.flatMap(CFGBuild(_, safeConfig, cfgBuildConfig))
 
       val heapBuildConfig = HeapBuild.defaultConfig.copy(initHeap = Some(entryState.heap))

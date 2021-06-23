@@ -22,7 +22,8 @@ import kr.ac.kaist.safe.util._
 case class CFG(
     ir: IRNode,
     globalVars: List[CFGId],
-    initFIdCount: Int = 0
+    initFIdCount: Int = 0,
+    initUserAsiteSize: Int = 0
 ) extends CFGNode {
   // cfg id
   val id: Int = CFG.getId
@@ -103,7 +104,7 @@ case class CFG(
   }
 
   // user defined allocation site size
-  private var userASiteSize: Int = 0
+  private var userASiteSize: Int = initUserAsiteSize
   def getUserASiteSize: Int = userASiteSize
   def setUserASiteSize(size: Int): Unit = { userASiteSize = size }
   def newUserASite: UserAllocSite = {
