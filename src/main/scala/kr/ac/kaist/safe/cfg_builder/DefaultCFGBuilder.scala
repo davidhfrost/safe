@@ -81,7 +81,7 @@ class DefaultCFGBuilder(
     ir match {
       case IRRoot(_, fds, vds, _) =>
         val globalVars: List[CFGId] = namesOfFunDecls(fds) ++ namesOfVars(vds)
-        val cfg = new CFG(ir, globalVars)
+        val cfg = new CFG(ir, globalVars, config.initFIdCount)
         currentFunc = cfg.globalFunc
         currentLoop = None
         (cfg, cvResult.excLog)

@@ -19,10 +19,9 @@ import kr.ac.kaist.safe.util.NodeUtil
 import kr.ac.kaist.safe.phase._
 
 object Initialize {
-  def apply(cfg: CFG): AbsState = {
+  def apply(cfg: CFG, initHeap: Option[AbsHeap]): AbsState = {
     val globalLocSet = LocSet(GLOBAL_LOC)
     val globalPureLocalEnv = AbsLexEnv.newPureLocal(globalLocSet)
-    val initHeap = AbsHeap.Empty
 
     val initCtx = AbsContext(Map(
       GLOBAL_ENV -> AbsLexEnv(AbsGlobalEnvRec.Top),
@@ -42,7 +41,7 @@ object Initialize {
       AbsHeap(model.heap)
     }
 
-    AbsState(modeledHeap, initCtx, AllocLocSet.Empty)
+    AbsState(initHeap.getOrElse(modeledHeap), initCtx, AllocLocSet.Empty)
   }
 
   def addSnapshot(st: AbsState, snapshot: String): AbsState = {

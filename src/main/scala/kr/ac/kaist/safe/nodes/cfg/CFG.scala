@@ -21,7 +21,8 @@ import kr.ac.kaist.safe.util._
 
 case class CFG(
     ir: IRNode,
-    globalVars: List[CFGId]
+    globalVars: List[CFGId],
+    initFIdCount: Int = 0
 ) extends CFGNode {
   // cfg id
   val id: Int = CFG.getId
@@ -44,7 +45,7 @@ case class CFG(
   def getBlock(fid: FunctionId, bid: BlockId): Option[CFGBlock] =
     funMap.get(fid).fold[Option[CFGBlock]](None) { _.getBlock(bid) }
 
-  private var fidCount: FunctionId = 0
+  private var fidCount: FunctionId = initFIdCount
   def getFId: FunctionId = fidCount
 
   // global function

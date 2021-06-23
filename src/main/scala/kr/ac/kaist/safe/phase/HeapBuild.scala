@@ -49,7 +49,7 @@ case object HeapBuild extends PhaseObj[CFG, HeapBuildConfig, (CFG, Semantics, Tr
     val entryCP = ControlPoint(cfg.globalFunc.entry, initTP)
 
     // initial abstract state
-    var initSt = Initialize(cfg)
+    var initSt = Initialize(cfg, config.initHeap)
 
     // handling snapshot mode
     config.snapshot.map(str =>
@@ -58,7 +58,7 @@ case object HeapBuild extends PhaseObj[CFG, HeapBuildConfig, (CFG, Semantics, Tr
     val worklist = Worklist(cfg)
     worklist.add(entryCP)
 
-    val sem = Semantics(cfg, worklist)
+    val sem = Semantics(cfg, worklist, safeConfig)
     sem.setState(entryCP, initSt)
 
     Success((cfg, sem, initTP, config, -1))
@@ -100,5 +100,6 @@ case class HeapBuildConfig(
   var loopSensitivity: LoopSensitivity = LoopSensitivity(0, 0),
   var snapshot: Option[String] = None,
   var recencyMode: Boolean = false,
-  var heapClone: Boolean = false
+  var heapClone: Boolean = false,
+  var initHeap: Option[AbsHeap] = None
 ) extends Config

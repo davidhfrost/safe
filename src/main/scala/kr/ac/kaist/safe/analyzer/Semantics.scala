@@ -18,18 +18,19 @@ import kr.ac.kaist.safe.analyzer.domain._
 import kr.ac.kaist.safe.analyzer.model._
 import kr.ac.kaist.safe.nodes.ir._
 import kr.ac.kaist.safe.nodes.cfg._
-import kr.ac.kaist.safe.util.{ AllocSite, EJSBool, EJSNull, EJSNumber, EJSString, EJSUndef, NodeUtil, Old, PredAllocSite, Recency, Recent, UserAllocSite }
-import kr.ac.kaist.safe.{ CmdAnalyze, CmdCFGBuild, LINE_SEP }
+import kr.ac.kaist.safe.util.{ AllocSite, EJSBool, EJSNull, EJSNumber, EJSString, EJSUndef, NodeUtil, Old, PredAllocSite, Recency, Recent, TraceSensLoc, UserAllocSite }
+import kr.ac.kaist.safe.{ CmdAnalyze, CmdCFGBuild, LINE_SEP, SafeConfig, CmdTranslate }
 import kr.ac.kaist.safe.analyzer.domain.react.{ CompDesc, ReactHelper, ReactState }
-import kr.ac.kaist.safe.phase.{ Analyze, HeapBuild }
-import scala.util.{ Success, Try }
+import kr.ac.kaist.safe.phase.{ Analyze, HeapBuild, HeapBuildConfig, CFGBuild, AnalyzeConfig }
 
+import scala.util.{ Success, Try }
 import scala.collection.mutable.{ Map => MMap }
 import scala.util.{ Failure, Success }
 
 case class Semantics(
     cfg: CFG,
-    worklist: Worklist
+    worklist: Worklist,
+    safeConfig: SafeConfig
 ) {
   lazy val engine = new ScriptEngineManager().getEngineByMimeType("text/javascript")
   def init: Unit = {
@@ -55,34 +56,61 @@ case class Semantics(
   var importedNames: MMap[CFGId, ImportId] = MMap()
   // maps each source file name to its analysis data
   val importedFiles: MMap[String, AnalysisData] = MMap()
+  var numImportedFiles: Int = 0
+  val fidsPerFile: Int = 1000
 
-  private def importFile(fileName: String): AnalysisData = importedFiles.get(fileName) match {
-    // if `fileName` has already been imported, do nothing.
-    case Some(value) => value
+  private def uniqueImportedFid(sourceFile: String, fid: FunctionId): FunctionId = {
+    val fileIdx = importedFiles.keys.toList.indexOf(sourceFile)
+    // "allocate" a fixed number of fids per file (1000).
+    // move the function's original fid to the block allocated to its file by adding a multiple of 1000
+    // corresponding to the file's index.
+    fid + 1000 * (fileIdx + 1)
+  }
+
+  // returns the heap after running the imported file
+  private def importFile(fileName: String, entryState: AbsState): AbsHeap = importedFiles.get(fileName) match {
+    // if `fileName` has already been imported, return the cached analysis data.
+    case Some(value) => entryState.heap
 
     // if `fileName` isn't present in `importedFiles`, we import it for the first time here.
     case None => {
-      // run the `Analyze` command on the file to compute its exported values.
-      val analysisResult: Try[AnalysisData] = CmdAnalyze(List("-silent", fileName), false)
+      // run the `translate` command on the imported file
+      val ir: Try[IRRoot] = CmdTranslate(List("-silent", fileName), false)
 
-      analysisResult match {
+      // apply the `CFGBuild` phase with offset function ids
+      // (we offset them so that they don't collide with function ids in other files)
+      numImportedFiles += 1
+      val cfgBuildConfig = CFGBuild.defaultConfig
+      cfgBuildConfig.initFIdCount = numImportedFiles * fidsPerFile
+      val importCFG: Try[CFG] = ir.flatMap(CFGBuild(_, safeConfig, cfgBuildConfig))
+
+      val heapBuildConfig = HeapBuild.defaultConfig.copy(initHeap = Some(entryState.heap))
+      val heapBuild = importCFG.flatMap(HeapBuild(_, safeConfig, heapBuildConfig))
+      val analysisRes = heapBuild.flatMap(Analyze(_, safeConfig, Analyze.defaultConfig))
+
+      analysisRes match {
         case Failure(exception) =>
           throw new Error(s"failure analyzing imported file ${fileName}")
         case Success(data) =>
+          val (importCFG, _, initTP, sem) = data
           importedFiles(fileName) = data
-          data
+
+          importCFG.getUserFuncs.foreach(cfg.addJSModel)
+
+          // return the heap at the end of the imported file
+          sem.getState(ControlPoint(importCFG.globalFunc.exit, initTP)).heap
       }
     }
   }
 
   private def getImportValue(fileName: String, name: String): (AbsValue, Set[Exception]) = {
-    val (cfg, _, globalTP, sem) = importFile(fileName)
+    val (cfg, _, globalTP, sem) = importedFiles(fileName)
     val exitCP = ControlPoint(cfg.globalFunc.exit, globalTP)
     sem.getExport(exitCP, name)
   }
 
   private def getImportFileState(fileName: String): AbsState = {
-    val (cfg, _, globalTP, sem) = importFile(fileName)
+    val (cfg, _, globalTP, sem) = importedFiles(fileName)
     val exitCP = ControlPoint(cfg.globalFunc.exit, globalTP)
     sem.getState(exitCP)
   }
@@ -656,33 +684,17 @@ case class Semantics(
         (st, excSt)
 
       case CFGImport(_, _, importedFile, binding, importName) =>
+        val st1 = st.copy(heap = importFile(importedFile, st))
 
+        val (importCfg, _, _, importSem) = importedFiles(importedFile)
         importedNames(binding) = (importedFile, importName)
-        val (importCfg, _, _, importSem) = importFile(importedFile)
-        val importSt = getImportFileState(importedFile)
         val (v, _) = getImportValue(importedFile, importName)
 
-        // compute the set of all fids which the imported value may reference.
-        val importFids = v.locset.foldLeft(AbsFId(FidSetEmpty))((allFids, loc) => {
-          val importFunObj = importSt.heap.get(loc)
-          allFids ⊔ importFunObj(IConstruct).fidset ⊔ importFunObj(ICall).fidset
-        })
-
-        importFids.foreach(fid => {
-          importCfg.getFunc(fid) match {
-            case None => ()
-            case Some(fn) =>
-              //println(s"fn $fid:")
-              //println(fn.toString(0))
-              cfg.addJSModel(fn)
-          }
-        })
-
-        val nextSt =
-          if (!v.isBottom) st.varStore(binding, v)
+        val st2 =
+          if (!v.isBottom) st1.varStore(binding, v)
           else AbsState.Bot
 
-        (nextSt, excSt)
+        (st2, excSt)
 
       case CFGDefaultExport(_, _, binding) =>
         defaultExport = Some(ExportedId(binding))
@@ -1873,16 +1885,7 @@ case class Semantics(
   // compute the abstract value of `expr` in the abstract state `st`.
   // returns a value and a set of possible exceptions occurring during computation.
   def V(expr: CFGExpr, st: AbsState): (AbsValue, Set[Exception]) = expr match {
-    case CFGVarRef(ir, id) => {
-      importedNames.get(id) match {
-        case Some((importFile, importName)) => {
-          val result = getImportValue(importFile, importName)
-          //println("imported value result: " + result)
-          result
-        }
-        case None => st.lookup(id)
-      }
-    }
+    case CFGVarRef(ir, id) => st.lookup(id)
     case CFGLoad(ir, obj, index) => {
       val (objV, _) = V(obj, st)
       val (idxV, idxExcSet) = V(index, st)

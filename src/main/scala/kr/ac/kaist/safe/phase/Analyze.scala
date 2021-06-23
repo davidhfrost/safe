@@ -72,8 +72,8 @@ case object Analyze extends PhaseObj[(CFG, Semantics, TracePartition, HeapBuildC
       //      println(sem.getAllIPSucc)
       //      println("\n\n-----CallInfo-----\n\n")
       //      println(sem.getCallInfoString)
-      //      println("\n\n-----CFG-----\n\n")
-      //      println(sem.cfg.toString(0))
+      println("\n\n-----CFG-----\n\n")
+      println(sem.cfg.toString(0))
       //      println("\n\n-----Exports-----\n\n")
       //      println("Default: " + (sem.defaultExport match {
       //        case Some(value) => value.getValue(sem, exitCP)
