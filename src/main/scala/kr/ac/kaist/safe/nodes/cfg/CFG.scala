@@ -98,7 +98,8 @@ case class CFG(
   override def toString(indent: Int): String = {
     val s: StringBuilder = new StringBuilder
     funcs.reverseIterator.foreach {
-      case func => s.append(func.toString(indent)).append(LINE_SEP)
+      case func if func.id >= 0 => s.append(func.toString(indent)).append(LINE_SEP)
+      case _ => ()
     }
     s.toString
   }

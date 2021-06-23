@@ -58,7 +58,7 @@ case object HeapBuild extends PhaseObj[CFG, HeapBuildConfig, (CFG, Semantics, Tr
     val worklist = Worklist(cfg)
     worklist.add(entryCP)
 
-    val sem = Semantics(cfg, worklist, safeConfig)
+    val sem = Semantics(cfg, worklist, safeConfig, config)
     sem.setState(entryCP, initSt)
 
     Success((cfg, sem, initTP, config, -1))
@@ -101,5 +101,6 @@ case class HeapBuildConfig(
   var snapshot: Option[String] = None,
   var recencyMode: Boolean = false,
   var heapClone: Boolean = false,
-  var initHeap: Option[AbsHeap] = None
+  var initHeap: Option[AbsHeap] = None,
+  var initNumImportedFiles: Int = 0
 ) extends Config

@@ -30,7 +30,8 @@ import scala.util.{ Failure, Success }
 case class Semantics(
     cfg: CFG,
     worklist: Worklist,
-    safeConfig: SafeConfig
+    safeConfig: SafeConfig,
+    heapBuildConfig: HeapBuildConfig
 ) {
   lazy val engine = new ScriptEngineManager().getEngineByMimeType("text/javascript")
   def init: Unit = {
@@ -56,7 +57,7 @@ case class Semantics(
   var importedNames: MMap[CFGId, ImportId] = MMap()
   // maps each source file name to its analysis data
   val importedFiles: MMap[String, AnalysisData] = MMap()
-  var numImportedFiles: Int = 0
+  var numImportedFiles: Int = heapBuildConfig.initNumImportedFiles
   val fidsPerFile: Int = 1000
   val userAsitesPerFile: Int = 10000
 
@@ -78,29 +79,41 @@ case class Semantics(
       // run the `translate` command on the imported file
       val ir: Try[IRRoot] = CmdTranslate(List("-silent", fileName), false)
 
-      // apply the `CFGBuild` phase with offset function ids
-      // (we offset them so that they don't collide with function ids in other files)
       numImportedFiles += 1
-      val cfgBuildConfig = CFGBuild.defaultConfig
-      cfgBuildConfig.initFIdCount = numImportedFiles * fidsPerFile
-      cfgBuildConfig.initUserAsiteSize = numImportedFiles * userAsitesPerFile
+
+      // apply the `CFGBuild` phase with offset function and heap allocation indices
+      // (we offset them so that they don't collide with allocations from other files)
+      val cfgBuildConfig = CFGBuild.defaultConfig.copy(
+        initFIdCount = numImportedFiles * fidsPerFile,
+        initUserAsiteSize = numImportedFiles * userAsitesPerFile
+      )
       val importCFG: Try[CFG] = ir.flatMap(CFGBuild(_, safeConfig, cfgBuildConfig))
 
-      val heapBuildConfig = HeapBuild.defaultConfig.copy(initHeap = Some(entryState.heap))
+      // apply the `HeapBuild` phase to the CFG, which creates a pre-initialized `Semantics` object.
+      val heapBuildConfig = HeapBuild.defaultConfig.copy(
+        initHeap = Some(entryState.heap),
+        initNumImportedFiles = numImportedFiles
+      )
       val heapBuild = importCFG.flatMap(HeapBuild(_, safeConfig, heapBuildConfig))
+
+      // apply the `Analyze` phase to the pre-initialized `Semantics` object.
       val analysisRes = heapBuild.flatMap(Analyze(_, safeConfig, Analyze.defaultConfig))
 
       analysisRes match {
         case Failure(exception) =>
           throw new Error(s"failure analyzing imported file ${fileName}")
         case Success(data) =>
-          val (importCFG, _, initTP, sem) = data
+          val (importCFG, _, initTP, importSem) = data
           importedFiles(fileName) = data
+
+          // sync this file's `numImportedFiles` count to match the "child" imported file,
+          // which may itself have imported more files to increase the count further.
+          numImportedFiles = importSem.numImportedFiles
 
           importCFG.getUserFuncs.foreach(cfg.addJSModel)
 
           // return the heap at the end of the imported file
-          sem.getState(ControlPoint(importCFG.globalFunc.exit, initTP)).heap
+          importSem.getState(ControlPoint(importCFG.globalFunc.exit, initTP)).heap
       }
     }
   }
