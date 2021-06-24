@@ -51,23 +51,11 @@ case class Semantics(
 
   // analyses of imported files
   type AnalysisData = (CFG, Int, TracePartition, Semantics)
-  // an import is identified by (source file name, export name in the source file)
-  type ImportId = (String, String)
-  // maps each imported `CFGId` to its source file name and import
-  var importedNames: MMap[CFGId, ImportId] = MMap()
   // maps each source file name to its analysis data
   val importedFiles: MMap[String, AnalysisData] = MMap()
   var numImportedFiles: Int = heapBuildConfig.initNumImportedFiles
   val fidsPerFile: Int = 1000
   val userAsitesPerFile: Int = 10000
-
-  private def uniqueImportedFid(sourceFile: String, fid: FunctionId): FunctionId = {
-    val fileIdx = importedFiles.keys.toList.indexOf(sourceFile)
-    // "allocate" a fixed number of fids per file (1000).
-    // move the function's original fid to the block allocated to its file by adding a multiple of 1000
-    // corresponding to the file's index.
-    fid + 1000 * (fileIdx + 1)
-  }
 
   // returns the heap after running the imported file
   private def importFile(fileName: String, entryState: AbsState): AbsHeap = importedFiles.get(fileName) match {
@@ -103,8 +91,8 @@ case class Semantics(
         case Failure(exception) =>
           throw new Error(s"failure analyzing imported file ${fileName}")
         case Success(data) =>
-          val (importCFG, _, initTP, importSem) = data
           importedFiles(fileName) = data
+          val (importCFG, _, initTP, importSem) = data
 
           // sync this file's `numImportedFiles` count to match the "child" imported file,
           // which may itself have imported more files to increase the count further.
@@ -118,10 +106,22 @@ case class Semantics(
     }
   }
 
-  private def getImportValue(fileName: String, name: String): (AbsValue, Set[Exception]) = {
+  private def getImportValue(fileName: String, importName: String): (AbsValue, Set[Exception]) = {
     val (cfg, _, globalTP, sem) = importedFiles(fileName)
     val exitCP = ControlPoint(cfg.globalFunc.exit, globalTP)
-    sem.getExport(exitCP, name)
+    sem.getExport(exitCP, importName)
+  }
+
+  private def getNameSpaceImportObj(fileName: String): (AbsObj, Set[Exception]) = {
+    val (cfg, _, globalTP, sem) = importedFiles(fileName)
+    val exitCP = ControlPoint(cfg.globalFunc.exit, globalTP)
+    sem.getNameSpaceExportObj(exitCP)
+  }
+
+  private def getDefaultImportValue(fileName: String): (AbsValue, Set[Exception]) = {
+    val (cfg, _, globalTP, sem) = importedFiles(fileName)
+    val exitCP = ControlPoint(cfg.globalFunc.exit, globalTP)
+    sem.getDefaultExport(exitCP)
   }
 
   private def getImportFileState(fileName: String): AbsState = {
@@ -134,8 +134,20 @@ case class Semantics(
   val exports: MMap[String, AbsExportValue] = MMap()
   var defaultExport: Option[AbsExportValue] = None
 
-  def getExport(cp: ControlPoint, name: String): (AbsValue, Set[Exception]) =
-    exports(name).getValue(this, cp)
+  def getExport(cp: ControlPoint, exportName: String): (AbsValue, Set[Exception]) =
+    exports(exportName).getValue(this, cp)
+
+  def getNameSpaceExportObj(cp: ControlPoint): (AbsObj, Set[Exception]) = exports.foldLeft((AbsObj.Empty, Set[Exception]()))((resultPair, exportPair) => {
+    val (namespace, exc) = resultPair
+    val (exportName, exportV) = exportPair
+
+    // read the `AbsValue` exported under the name `exportName`
+    val (value, valueExc) = exportV.getValue(this, cp)
+
+    val absDataProp = AbsDataProp(value, AbsBool(true), AbsBool(true), AbsBool(false))
+    (namespace.update(exportName, absDataProp), exc ++ valueExc)
+  })
+
   def getDefaultExport(cp: ControlPoint): (AbsValue, Set[Exception]) = defaultExport match {
     case Some(expVal) => expVal.getValue(this, cp)
     case None => (AbsValue.Bot, Set())
@@ -693,18 +705,43 @@ case class Semantics(
       case CFGNoOp(_, _, _) => (st, excSt)
 
       case CFGNameSpaceImport(_, _, importedFile, binding) =>
-        (st, excSt)
-
-      case CFGDefaultImport(_, _, importedFile, binding) =>
-        (st, excSt)
-
-      case CFGImport(_, _, importedFile, binding, importName) =>
         val st1 = st.copy(heap = importFile(importedFile, st))
 
-        val (importCfg, _, _, importSem) = importedFiles(importedFile)
-        importedNames(binding) = (importedFile, importName)
+        val (exportObj, _) = getNameSpaceImportObj(importedFile)
+
+        // write the export obj to the location(s) referenced by `binding` in the heap
+        val (target, exc) = st1.lookup(binding)
+        val heap1 = target.locset.foldLeft(st1.heap)((nextHeap, loc) => nextHeap.update(loc, exportObj))
+
+        // write the new heap to the state
+        val st2 = st1.copy(heap = heap1)
+
+        (st2, excSt)
+
+      case CFGDefaultImport(_, _, importedFile, binding) =>
+        // imported files write to separate sections of the heap.
+        // after importing the file, we first copy that updated heap into the program state.
+        val st1 = st.copy(heap = importFile(importedFile, st))
+
+        // read the value of `importName` from the exports of `importedFile`.
+        val (v, _) = getDefaultImportValue(importedFile)
+
+        // write that value to the identifier `binding` in the program state.
+        val st2 =
+          if (!v.isBottom) st1.varStore(binding, v)
+          else AbsState.Bot
+
+        (st2, excSt)
+
+      case CFGImport(_, _, importedFile, binding, importName) =>
+        // imported files write to separate sections of the heap.
+        // after importing the file, we first copy that updated heap into the program state.
+        val st1 = st.copy(heap = importFile(importedFile, st))
+
+        // read the value of `importName` from the exports of `importedFile`.
         val (v, _) = getImportValue(importedFile, importName)
 
+        // write that value to the identifier `binding` in the program state.
         val st2 =
           if (!v.isBottom) st1.varStore(binding, v)
           else AbsState.Bot

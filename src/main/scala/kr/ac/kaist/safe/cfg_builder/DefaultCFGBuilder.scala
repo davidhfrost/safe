@@ -685,7 +685,9 @@ class DefaultCFGBuilder(
         case IRImportedDefaultBinding(_, name) =>
           tailBlock.createInst(CFGDefaultImport(s, _, importedFile, id2cfgId(name)))
         case IRNameSpaceImport(_, name) =>
-          tailBlock.createInst(CFGNameSpaceImport(s, _, importedFile, id2cfgId(name)))
+          val cfgId = id2cfgId(name)
+          tailBlock.createInst(CFGAlloc(s, _, cfgId, None, newASite))
+          tailBlock.createInst(CFGNameSpaceImport(s, _, importedFile, cfgId))
         case IRNamedImports(_, importsList) =>
           importsList.foreach(imp => {
             val (nameId, bindingId) = translateSpecifierIds(imp)
