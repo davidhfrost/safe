@@ -41,6 +41,14 @@ object Initialize {
       AbsHeap(model.heap)
     }
 
+    val heap = initHeap match {
+      // the global object is the only heap location which should be
+      // potentially shared between the default initial heap any user-defined initial heap.
+      // we *only* want to use the modeled heap's global object, and keep other locations the same.
+      case Some(h) => h.update(GLOBAL_LOC, modeledHeap.get(GLOBAL_LOC))
+      case None => modeledHeap
+    }
+
     AbsState(initHeap.getOrElse(modeledHeap), initCtx, AllocLocSet.Empty)
   }
 

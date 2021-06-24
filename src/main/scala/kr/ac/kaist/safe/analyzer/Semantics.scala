@@ -58,9 +58,9 @@ case class Semantics(
   val userAsitesPerFile: Int = 10000
 
   // returns the heap after running the imported file
-  private def importFile(fileName: String, entryState: AbsState): AbsHeap = importedFiles.get(fileName) match {
+  private def importFile(fileName: String, entryState: AbsState): AbsState = importedFiles.get(fileName) match {
     // if `fileName` has already been imported, return the cached analysis data.
-    case Some(value) => entryState.heap
+    case Some(value) => entryState
 
     // if `fileName` isn't present in `importedFiles`, we import it for the first time here.
     case None => {
@@ -100,8 +100,14 @@ case class Semantics(
 
           importCFG.getUserFuncs.foreach(cfg.addJSModel)
 
-          // return the heap at the end of the imported file
-          importSem.getState(ControlPoint(importCFG.globalFunc.exit, initTP)).heap
+          // extract the heap at the end of the imported file.
+          val heapAfterImport = importSem.getState(ControlPoint(importCFG.globalFunc.exit, initTP)).heap
+
+          // maintain the same global scope of the entry state, rather than that of the imported file.
+          val nextHeap = heapAfterImport.update(GLOBAL_LOC, entryState.heap.get(GLOBAL_LOC))
+
+          // write the new heap to the entry state, and return it.
+          entryState.copy(heap = nextHeap)
       }
     }
   }
@@ -705,7 +711,7 @@ case class Semantics(
       case CFGNoOp(_, _, _) => (st, excSt)
 
       case CFGNameSpaceImport(_, _, importedFile, binding) =>
-        val st1 = st.copy(heap = importFile(importedFile, st))
+        val st1 = importFile(importedFile, st)
 
         val (exportObj, _) = getNameSpaceImportObj(importedFile)
 
@@ -719,9 +725,11 @@ case class Semantics(
         (st2, excSt)
 
       case CFGDefaultImport(_, _, importedFile, binding) =>
+        println(s"default import; importedFile=${importedFile}, binding=${binding}")
+
         // imported files write to separate sections of the heap.
         // after importing the file, we first copy that updated heap into the program state.
-        val st1 = st.copy(heap = importFile(importedFile, st))
+        val st1 = importFile(importedFile, st)
 
         // read the value of `importName` from the exports of `importedFile`.
         val (v, _) = getDefaultImportValue(importedFile)
@@ -736,7 +744,7 @@ case class Semantics(
       case CFGImport(_, _, importedFile, binding, importName) =>
         // imported files write to separate sections of the heap.
         // after importing the file, we first copy that updated heap into the program state.
-        val st1 = st.copy(heap = importFile(importedFile, st))
+        val st1 = importFile(importedFile, st)
 
         // read the value of `importName` from the exports of `importedFile`.
         val (v, _) = getImportValue(importedFile, importName)
@@ -753,7 +761,13 @@ case class Semantics(
         (st, excSt)
 
       case CFGExport(_, _, binding, exportName) =>
-        exports(exportName.text) = ExportedId(binding)
+        // `export { _ as default }` also implies a default export
+        if (exportName.text == "default") {
+          defaultExport = Some(ExportedId(binding))
+        } else {
+          exports(exportName.text) = ExportedId(binding)
+        }
+
         (st, excSt)
 
       case _ =>
