@@ -95,10 +95,12 @@ private Stmt Stmt =
  *
  *   function App() {  ... constructor ... }            // FunctionDeclaration
  *   App.prototype.methodName = function() { ... }      // ExprStmt
+ *
+ *   ClassDeclaration = class w Id w (extends w LeftHandSide)? w { ClassBody }
  */
 
-Stmt ClassDeclaration = "class" w className:Id w "{" w a2:ClassBody w "}" {
-    //System.out.println("class name: " + a1.toString());
+ClassDeclaration ClassDeclaration = class w className:Id (w extends w superClass:LeftHandSide)? w opencurly w ClassBody w closecurly {
+    System.out.println("class name: " + className.toString());
     Span span = createSpan(yyStart,yyCount);
 
     yyValue = new ClassDeclaration(
@@ -108,11 +110,49 @@ Stmt ClassDeclaration = "class" w className:Id w "{" w a2:ClassBody w "}" {
     );
 };
 
+// Doesn't work.
+public LHS ClassExpression = class (w Id)? (w extends w superClass:LeftHandSide)? w opencurly w ClassBody w closecurly {
+    Span span = createSpan(yyStart,yyCount);
+    yyValue = new Bool(NodeUtil.makeASTNodeInfo(span), true);
+};
 
-Stmt ClassBody = a1:Id w openparen a2:(w Params)? w closeparen w a3:FunctionBody {
+Stmt ClassBody = (w ClassElement)* {
     Span span = createSpan(yyStart,yyCount);
     yyValue = new EmptyStmt(NodeUtil.makeASTNodeInfo(span));
 };
+
+Stmt ClassElement = (MethodDefinition / static w MethodDefinition / semicolon) {
+    Span span = createSpan(yyStart,yyCount);
+    yyValue = new EmptyStmt(NodeUtil.makeASTNodeInfo(span));
+};
+
+Stmt MethodDefinition = PropName w openparen a2:(w Params)? w closeparen w a3:FunctionBody {
+    Span span = createSpan(yyStart,yyCount);
+    yyValue = new EmptyStmt(NodeUtil.makeASTNodeInfo(span));
+}
+/ <Getter> get w a1:PropName w openparen w closeparen w a2:FunctionBody {
+    //Span span = createSpan(yyStart,yyCount);
+    //ASTNodeInfo info = NodeUtil.makeASTNodeInfo(span);
+    //yyValue = new GetProp(info, a1,
+    //                             new Functional(info, nilFds, nilVds,
+    //                                            new Stmts(info, toList(a2._1()), a2._3()),
+    //                                            a1.toId(), nilIds, a2._2(), false));
+    Span span = createSpan(yyStart,yyCount);
+    yyValue = new EmptyStmt(NodeUtil.makeASTNodeInfo(span));
+}
+/ <Setter> set w a1:PropName w openparen w a2:Id w closeparen w a3:FunctionBody {
+    //Span span = createSpan(yyStart,yyCount);
+    //ASTNodeInfo info = NodeUtil.makeASTNodeInfo(span);
+    //yyValue = new SetProp(info, a1,
+    //                           new Functional(info, nilFds, nilVds,
+    //                                          new Stmts(info, toList(a3._1()), a3._3()),
+    //                                          a1.toId(), toList(list(a2)), a3._2(), false));
+    Span span = createSpan(yyStart,yyCount);
+    yyValue = new EmptyStmt(NodeUtil.makeASTNodeInfo(span));
+};
+
+
+
 
 /*
  * FunctionDeclaration ::= function w Id w ( (w Params)? w ) w FunctionBody
