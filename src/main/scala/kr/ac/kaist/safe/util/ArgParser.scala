@@ -12,13 +12,15 @@
 package kr.ac.kaist.safe.util
 
 // Rename Success and Failure to avoid name conflicts with ParseResult
-import scala.util.{ Try, Success => Succ, Failure => Fail }
+import scala.util.{ Try, Failure => Fail, Success => Succ }
 import scala.util.parsing.combinator._
 import scala.io.Source
-import kr.ac.kaist.safe.{ Safe, Command, SafeConfig }
-import kr.ac.kaist.safe.phase.{ PhaseOption, Config }
+import kr.ac.kaist.safe.{ Command, Safe, SafeConfig }
+import kr.ac.kaist.safe.phase.{ Config, PhaseOption }
 import kr.ac.kaist.safe.errors.error._
 import spray.json._
+
+import java.io.File
 
 // Argument parser by using Scala RegexParsers.
 class ArgParser(cmd: Command, safeConfig: SafeConfig) extends RegexParsers {
@@ -132,6 +134,7 @@ class ArgParser(cmd: Command, safeConfig: SafeConfig) extends RegexParsers {
     }
 
     safeConfig.fileNames = safeConfig.fileNames.reverse
+      .map(new File(_).getCanonicalPath)
 
     if (safeConfig.fileNames.map(FileKind(_)).exists(_ == HTMLFile))
       safeConfig.html = true

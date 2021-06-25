@@ -19,10 +19,12 @@ import kr.ac.kaist.safe.analyzer.model._
 import kr.ac.kaist.safe.nodes.ir._
 import kr.ac.kaist.safe.nodes.cfg._
 import kr.ac.kaist.safe.util.{ AllocSite, EJSBool, EJSNull, EJSNumber, EJSString, EJSUndef, NodeUtil, Old, PredAllocSite, Recency, Recent, TraceSensLoc, UserAllocSite }
-import kr.ac.kaist.safe.{ CmdAnalyze, CmdCFGBuild, LINE_SEP, SafeConfig, CmdTranslate }
+import kr.ac.kaist.safe.{ CmdAnalyze, CmdCFGBuild, CmdTranslate, LINE_SEP, SafeConfig }
 import kr.ac.kaist.safe.analyzer.domain.react.{ CompDesc, ReactHelper, ReactState }
-import kr.ac.kaist.safe.phase.{ Analyze, HeapBuild, HeapBuildConfig, CFGBuild, AnalyzeConfig }
+import kr.ac.kaist.safe.phase.{ Analyze, AnalyzeConfig, CFGBuild, HeapBuild, HeapBuildConfig }
 
+import java.io.File
+import java.nio.file.{ Paths, Path }
 import scala.util.{ Success, Try }
 import scala.collection.mutable.{ Map => MMap }
 import scala.util.{ Failure, Success }
@@ -57,7 +59,18 @@ case class Semantics(
   val fidsPerFile: Int = 1000
   val userAsitesPerFile: Int = 10000
 
-  // returns the heap after running the imported file
+  // maps a *relative* module specifier path to its *absolute* canonical path.
+  private def resolveImportFilePath(importedFile: String): String = {
+    // concatenate the source file's directory with the module specifier string
+    val baseDir = Paths.get(new File(safeConfig.fileNames.head).getParentFile.getCanonicalPath)
+    val fileName = baseDir.resolve(importedFile).toString
+
+    // allow for an implicit `.js` suffix on module specifiers
+    if (fileName.endsWith(".js")) fileName
+    else fileName + ".js"
+  }
+
+  // returns the new state after analyzing the imported file.
   private def importFile(fileName: String, entryState: AbsState): AbsState = importedFiles.get(fileName) match {
     // if `fileName` has already been imported, return the cached analysis data.
     case Some(value) => entryState
@@ -69,23 +82,25 @@ case class Semantics(
 
       numImportedFiles += 1
 
+      val newSafeConfig = safeConfig.copy(fileNames = List(fileName))
+
       // apply the `CFGBuild` phase with offset function and heap allocation indices
       // (we offset them so that they don't collide with allocations from other files)
       val cfgBuildConfig = CFGBuild.defaultConfig.copy(
         initFIdCount = numImportedFiles * fidsPerFile,
         initUserAsiteSize = numImportedFiles * userAsitesPerFile
       )
-      val importCFG: Try[CFG] = ir.flatMap(CFGBuild(_, safeConfig, cfgBuildConfig))
+      val importCFG: Try[CFG] = ir.flatMap(CFGBuild(_, newSafeConfig, cfgBuildConfig))
 
       // apply the `HeapBuild` phase to the CFG, which creates a pre-initialized `Semantics` object.
       val heapBuildConfig = HeapBuild.defaultConfig.copy(
         initHeap = Some(entryState.heap),
         initNumImportedFiles = numImportedFiles
       )
-      val heapBuild = importCFG.flatMap(HeapBuild(_, safeConfig, heapBuildConfig))
+      val heapBuild = importCFG.flatMap(HeapBuild(_, newSafeConfig, heapBuildConfig))
 
       // apply the `Analyze` phase to the pre-initialized `Semantics` object.
-      val analysisRes = heapBuild.flatMap(Analyze(_, safeConfig, Analyze.defaultConfig))
+      val analysisRes = heapBuild.flatMap(Analyze(_, newSafeConfig, Analyze.defaultConfig))
 
       analysisRes match {
         case Failure(exception) =>
@@ -711,9 +726,10 @@ case class Semantics(
       case CFGNoOp(_, _, _) => (st, excSt)
 
       case CFGNameSpaceImport(_, _, importedFile, binding) =>
-        val st1 = importFile(importedFile, st)
+        val fileName = resolveImportFilePath(importedFile)
+        val st1 = importFile(fileName, st)
 
-        val (exportObj, _) = getNameSpaceImportObj(importedFile)
+        val (exportObj, _) = getNameSpaceImportObj(fileName)
 
         // write the export obj to the location(s) referenced by `binding` in the heap
         val (target, exc) = st1.lookup(binding)
@@ -725,14 +741,13 @@ case class Semantics(
         (st2, excSt)
 
       case CFGDefaultImport(_, _, importedFile, binding) =>
-        println(s"default import; importedFile=${importedFile}, binding=${binding}")
-
         // imported files write to separate sections of the heap.
         // after importing the file, we first copy that updated heap into the program state.
-        val st1 = importFile(importedFile, st)
+        val fileName = resolveImportFilePath(importedFile)
+        val st1 = importFile(fileName, st)
 
         // read the value of `importName` from the exports of `importedFile`.
-        val (v, _) = getDefaultImportValue(importedFile)
+        val (v, _) = getDefaultImportValue(fileName)
 
         // write that value to the identifier `binding` in the program state.
         val st2 =
@@ -744,10 +759,11 @@ case class Semantics(
       case CFGImport(_, _, importedFile, binding, importName) =>
         // imported files write to separate sections of the heap.
         // after importing the file, we first copy that updated heap into the program state.
-        val st1 = importFile(importedFile, st)
+        val fileName = resolveImportFilePath(importedFile)
+        val st1 = importFile(fileName, st)
 
         // read the value of `importName` from the exports of `importedFile`.
-        val (v, _) = getImportValue(importedFile, importName)
+        val (v, _) = getImportValue(fileName, importName)
 
         // write that value to the identifier `binding` in the program state.
         val st2 =
