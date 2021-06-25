@@ -99,14 +99,13 @@ private Stmt Stmt =
  *   ClassDeclaration = class w Id w (extends w LeftHandSide)? w { ClassBody }
  */
 
-ClassDeclaration ClassDeclaration = class w className:Id (w extends w superClass:LeftHandSide)? w opencurly w ClassBody w closecurly {
-    System.out.println("class name: " + className.toString());
+ClassDeclaration ClassDeclaration = class w className:Id (w extends w superClass:LeftHandSide)? w methods:ClassBody {
     Span span = createSpan(yyStart,yyCount);
 
     yyValue = new ClassDeclaration(
         NodeUtil.makeASTNodeInfo(span),
-        className
-        //methods
+        className,
+        toList(methods)
     );
 };
 
@@ -116,20 +115,37 @@ public LHS ClassExpression = class (w Id)? (w extends w superClass:LeftHandSide)
     yyValue = new Bool(NodeUtil.makeASTNodeInfo(span), true);
 };
 
-Stmt ClassBody = (w ClassElement)* {
-    Span span = createSpan(yyStart,yyCount);
-    yyValue = new EmptyStmt(NodeUtil.makeASTNodeInfo(span));
-};
+List<FunDecl> ClassBody =
+    opencurly w closecurly
+    { yyValue = list(); }
+  / opencurly w a1:ClassElement a2s:(w ClassElement)* w closecurly
+    { yyValue = cons(a1, a2s.list()); };
 
-Stmt ClassElement = (MethodDefinition / static w MethodDefinition / semicolon) {
-    Span span = createSpan(yyStart,yyCount);
-    yyValue = new EmptyStmt(NodeUtil.makeASTNodeInfo(span));
-};
 
-Stmt MethodDefinition = PropName w openparen a2:(w Params)? w closeparen w a3:FunctionBody {
-    Span span = createSpan(yyStart,yyCount);
-    yyValue = new EmptyStmt(NodeUtil.makeASTNodeInfo(span));
-}
+FunDecl ClassElement =
+    funDecl:MethodDefinition  {
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = funDecl;
+    }
+  / static w funDecl:MethodDefinition {
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = funDecl;
+    };
+
+// TODO: replace a1:Id with a1:PropName
+FunDecl MethodDefinition = a1:PropName w openparen a2:(w Params)? w closeparen w a3:FunctionBody
+     { Span span = createSpan(yyStart,yyCount);
+       ASTNodeInfo info = NodeUtil.makeASTNodeInfo(span);
+       scala.collection.immutable.List<Id> ids;
+       if (a2 == null) ids = nilIds;
+       else ids = toList(a2);
+       yyValue = new FunDecl(info,
+                             new Functional(info, nilFds, nilVds,
+                                            new Stmts(info, toList(a3._1()), a3._3()),
+                                            a1.toId(), ids, a3._2(), false), false);
+     };
+// TODO: parse getters and setters
+/*
 / <Getter> get w a1:PropName w openparen w closeparen w a2:FunctionBody {
     //Span span = createSpan(yyStart,yyCount);
     //ASTNodeInfo info = NodeUtil.makeASTNodeInfo(span);
@@ -150,12 +166,16 @@ Stmt MethodDefinition = PropName w openparen a2:(w Params)? w closeparen w a3:Fu
     Span span = createSpan(yyStart,yyCount);
     yyValue = new EmptyStmt(NodeUtil.makeASTNodeInfo(span));
 };
-
+*/
 
 
 
 /*
  * FunctionDeclaration ::= function w Id w ( (w Params)? w ) w FunctionBody
+ *
+ * a1: name of the function
+ * a2: arguments of the function
+ * a3: function body
  */
 FunDecl FunctionDeclaration =
      function w a1:Id w openparen a2:(w Params)? w closeparen w a3:FunctionBody
@@ -181,6 +201,9 @@ public List<Id> Params =
 
 /*
  * FunctionBody ::= { w Stmt* w }
+ * List<Stmts> : the actual AST statement nodes of all the code in the function
+ * string: a string representation of all the code in the function
+ * boolean: whether the function is in strict mode
  */
 public Tuple3<List<Stmt>, String, Boolean> FunctionBody =
      opencurly w a1:UseStrictDirectives? w closecurly

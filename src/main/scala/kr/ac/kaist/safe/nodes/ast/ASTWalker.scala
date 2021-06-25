@@ -108,8 +108,8 @@ trait ASTWalker {
       ExportDefaultAssignmentStmt(walk(info), walk(assign))
 
     // class statements
-    case ClassDeclaration(info, name) =>
-      ClassDeclaration(walk(info), walk(name))
+    case ClassDeclaration(info, name, methods) =>
+      ClassDeclaration(walk(info), walk(name), methods.map(walk))
   }
 
   def walk(node: Expr): Expr = node match {

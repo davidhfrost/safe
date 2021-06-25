@@ -766,10 +766,10 @@ case class ExportClause(
 case class ClassDeclaration(
     info: ASTNodeInfo,
     name: Id,
-    // methods: List[FunDecl]
+    methods: List[FunDecl]
 ) extends Stmt {
   override def toString(indent: Int): String =
     s"class ${name.toString(0)} {\n" +
-      //      methods.map(_.toString(0)).mkString("\n") + "\n" +
+      methods.map(_.toString(0)).mkString("\n") + "\n" +
       "}"
 }
