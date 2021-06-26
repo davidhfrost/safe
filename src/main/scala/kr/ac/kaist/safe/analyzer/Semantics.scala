@@ -18,13 +18,13 @@ import kr.ac.kaist.safe.analyzer.domain._
 import kr.ac.kaist.safe.analyzer.model._
 import kr.ac.kaist.safe.nodes.ir._
 import kr.ac.kaist.safe.nodes.cfg._
-import kr.ac.kaist.safe.util.{ AllocSite, EJSBool, EJSNull, EJSNumber, EJSString, EJSUndef, NodeUtil, Old, PredAllocSite, Recency, Recent, TraceSensLoc, UserAllocSite }
+import kr.ac.kaist.safe.util.{ AllocSite, EJSBool, EJSNull, EJSNumber, EJSString, EJSUndef, NodeUtil, Old, PredAllocSite, Recency, Recent, TraceSensLoc, Useful, UserAllocSite }
 import kr.ac.kaist.safe.{ CmdAnalyze, CmdCFGBuild, CmdTranslate, LINE_SEP, SafeConfig }
 import kr.ac.kaist.safe.analyzer.domain.react.{ CompDesc, ReactHelper, ReactState }
 import kr.ac.kaist.safe.phase.{ Analyze, AnalyzeConfig, CFGBuild, HeapBuild, HeapBuildConfig }
 
 import java.io.File
-import java.nio.file.{ Paths, Path }
+import java.nio.file.{ Path, Paths }
 import scala.util.{ Success, Try }
 import scala.collection.mutable.{ Map => MMap }
 import scala.util.{ Failure, Success }
@@ -59,15 +59,35 @@ case class Semantics(
   val fidsPerFile: Int = 1000
   val userAsitesPerFile: Int = 10000
 
-  // maps a *relative* module specifier path to its *absolute* canonical path.
-  private def resolveImportFilePath(importedFile: String): String = {
-    // concatenate the source file's directory with the module specifier string
-    val baseDir = Paths.get(new File(safeConfig.fileNames.head).getParentFile.getCanonicalPath)
-    val fileName = baseDir.resolve(importedFile).toString
+  // the directory containing modeled NPM modules
+  private val npmModuleDirs = List("src", "main", "resources", "modules")
+  // a mapping of (module
+  private val modeledNpmModules: Map[String, String] = Map(
+    ("react", "react.js")
+  )
 
-    // allow for an implicit `.js` suffix on module specifiers
-    if (fileName.endsWith(".js")) fileName
-    else fileName + ".js"
+  private def npmModulePath(moduleName: String): Option[String] =
+    modeledNpmModules.get(moduleName).map(n => Useful.path(npmModuleDirs ++ List(n): _*))
+
+  // maps a *relative* module specifier path to its *absolute* canonical path.
+  private def resolveModuleSpecifierPath(path: String): String = {
+    println(s"resolving path: '${path}'")
+    // if the path starts with a period, it's (probably) a relative file path
+    if (path.startsWith(".")) {
+      // concatenate the source file's directory with the module specifier string
+      val baseDir = Paths.get(new File(safeConfig.fileNames.head).getParentFile.getCanonicalPath)
+      val fileName = baseDir.resolve(path).toString
+
+      // allow for an implicit `.js` suffix on module specifiers
+      if (fileName.endsWith(".js")) fileName
+      else fileName + ".js"
+    } else {
+      // if `path` doesn't start with a period, it's an npm package, which we can model from SAFE
+      npmModulePath(path) match {
+        case Some(mp) => mp
+        case None => throw new Error(s"Unmodelled NPM module was imported: '${path}'")
+      }
+    }
   }
 
   // returns the new state after analyzing the imported file.
@@ -726,7 +746,7 @@ case class Semantics(
       case CFGNoOp(_, _, _) => (st, excSt)
 
       case CFGNameSpaceImport(_, _, importedFile, binding) =>
-        val fileName = resolveImportFilePath(importedFile)
+        val fileName = resolveModuleSpecifierPath(importedFile)
         val st1 = importFile(fileName, st)
 
         val (exportObj, _) = getNameSpaceImportObj(fileName)
@@ -743,7 +763,7 @@ case class Semantics(
       case CFGDefaultImport(_, _, importedFile, binding) =>
         // imported files write to separate sections of the heap.
         // after importing the file, we first copy that updated heap into the program state.
-        val fileName = resolveImportFilePath(importedFile)
+        val fileName = resolveModuleSpecifierPath(importedFile)
         val st1 = importFile(fileName, st)
 
         // read the value of `importName` from the exports of `importedFile`.
@@ -759,7 +779,7 @@ case class Semantics(
       case CFGImport(_, _, importedFile, binding, importName) =>
         // imported files write to separate sections of the heap.
         // after importing the file, we first copy that updated heap into the program state.
-        val fileName = resolveImportFilePath(importedFile)
+        val fileName = resolveModuleSpecifierPath(importedFile)
         val st1 = importFile(fileName, st)
 
         // read the value of `importName` from the exports of `importedFile`.
