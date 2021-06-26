@@ -137,8 +137,8 @@ trait ASTGeneralWalker[Result] {
       join(walk(info), walk(assign))
 
     // class statements
-    case ClassDeclaration(info, name, methods) =>
-      join(walk(info) :: walk(name) :: methods.map(walk): _*)
+    case ClassDeclaration(info, name, superClass, methods) =>
+      join(walk(info) :: walk(name) :: walkOpt(superClass) ++ methods.map(walk): _*)
     case ClassMethod(info, ftn, _) =>
       join(walk(info), walk(ftn))
   }

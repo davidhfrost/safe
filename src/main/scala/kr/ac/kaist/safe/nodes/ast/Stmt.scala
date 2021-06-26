@@ -766,6 +766,7 @@ case class ExportClause(
 case class ClassDeclaration(
     info: ASTNodeInfo,
     name: Id,
+    superClass: Option[LHS],
     methods: List[ClassMethod]
 ) extends Stmt {
   override def toString(indent: Int): String =

@@ -108,8 +108,8 @@ trait ASTWalker {
       ExportDefaultAssignmentStmt(walk(info), walk(assign))
 
     // class statements
-    case ClassDeclaration(info, name, methods) =>
-      ClassDeclaration(walk(info), walk(name), methods.map(walk).asInstanceOf[List[ClassMethod]])
+    case ClassDeclaration(info, name, superClass, methods) =>
+      ClassDeclaration(walk(info), walk(name), superClass.map(walk), methods.map(walk).asInstanceOf[List[ClassMethod]])
     case ClassMethod(info, ftn, static) =>
       ClassMethod(walk(info), walk(ftn), static)
   }

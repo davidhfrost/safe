@@ -88,32 +88,24 @@ private Stmt Stmt =
    / ClassDeclaration
    / Statement ;
 
-/*
- *   class App {
- *      methodName() {  ...  }
- *   }
- *
- *   function App() {  ... constructor ... }            // FunctionDeclaration
- *   App.prototype.methodName = function() { ... }      // ExprStmt
- *
- *   ClassDeclaration = class w Id w (extends w LeftHandSide)? w { ClassBody }
- */
-
-ClassDeclaration ClassDeclaration = class w className:Id (w extends w superClass:LeftHandSide)? w methods:ClassBody {
+ClassDeclaration ClassDeclaration = class w className:Id superClass:(w extends w LeftHandSide)? w methods:ClassBody {
     Span span = createSpan(yyStart,yyCount);
 
     yyValue = new ClassDeclaration(
         NodeUtil.makeASTNodeInfo(span),
         className,
+        Option.<LHS>apply(superClass),
         toList(methods)
     );
 };
 
-// Doesn't work.
-public LHS ClassExpression = class (w Id)? (w extends w superClass:LeftHandSide)? w opencurly w ClassBody w closecurly {
-    Span span = createSpan(yyStart,yyCount);
-    yyValue = new Bool(NodeUtil.makeASTNodeInfo(span), true);
-};
+/*
+        // Doesn't work.
+        public LHS ClassExpression = class className:(w Id)? superClass:(w extends w LeftHandSide)? w methods:ClassBody {
+            Span span = createSpan(yyStart,yyCount);
+            yyValue = new ClassDeclaration(NodeUtil.makeASTNodeInfo(span), className, Some.<LHS>apply(superClass), toList(methods));
+        };
+*/
 
 List<ClassMethod> ClassBody =
     opencurly w closecurly
