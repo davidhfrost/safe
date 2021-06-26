@@ -104,8 +104,8 @@ trait ASTWalker {
       ExportSelf(walk(info), walk(export))
     case ExportVarStmt(info, vars) =>
       ExportVarStmt(walk(info), vars.map(walk))
-    case ExportDefaultAssignmentStmt(info, assign) =>
-      ExportDefaultAssignmentStmt(walk(info), walk(assign))
+    case ExportDefaultExpr(info, assign) =>
+      ExportDefaultExpr(walk(info), walk(assign))
 
     // class statements
     case ClassDeclaration(info, name, superClass, methods) =>

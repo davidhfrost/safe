@@ -426,10 +426,10 @@ private transient ExportDeclaration ExportDeclaration =
         Span span = createSpan(yyStart,yyCount);
         yyValue = new ExportVarStmt(NodeUtil.makeASTNodeInfo(span), toList(vars));
     }
-  / "export" w "default" w assign:Assignment {
-          Span span = createSpan(yyStart,yyCount);
-          yyValue = new ExportDefaultAssignmentStmt(NodeUtil.makeASTNodeInfo(span), assign);
-  };
+  / "export" w "default" w expr:Assignment {
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = new ExportDefaultExpr(NodeUtil.makeASTNodeInfo(span), expr);
+    };
 
   /* TODO:
    * export Declaration

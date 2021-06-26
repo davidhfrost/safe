@@ -133,7 +133,7 @@ trait ASTGeneralWalker[Result] {
       join(walk(info), walk(export))
     case ExportVarStmt(info, vars) =>
       join(walk(info) :: vars.map(walk): _*)
-    case ExportDefaultAssignmentStmt(info, assign) =>
+    case ExportDefaultExpr(info, assign) =>
       join(walk(info), walk(assign))
 
     // class statements

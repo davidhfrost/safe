@@ -71,7 +71,6 @@ case class Semantics(
 
   // maps a *relative* module specifier path to its *absolute* canonical path.
   private def resolveModuleSpecifierPath(path: String): String = {
-    println(s"resolving path: '${path}'")
     // if the path starts with a period, it's (probably) a relative file path
     if (path.startsWith(".")) {
       // concatenate the source file's directory with the module specifier string
@@ -176,7 +175,13 @@ case class Semantics(
   var defaultExport: Option[AbsExportValue] = None
 
   def getExport(cp: ControlPoint, exportName: String): (AbsValue, Set[Exception]) =
-    exports(exportName).getValue(this, cp)
+    exports.get(exportName) match {
+      case Some(v) => v.getValue(this, cp)
+      case None => {
+        println(s"Attempted to read undefined export '${exportName}' from '${safeConfig.fileNames.head}'")
+        (AbsValue.Bot, Set(ReferenceError))
+      }
+    }
 
   def getNameSpaceExportObj(cp: ControlPoint): (AbsObj, Set[Exception]) = exports.foldLeft((AbsObj.Empty, Set[Exception]()))((resultPair, exportPair) => {
     val (namespace, exc) = resultPair

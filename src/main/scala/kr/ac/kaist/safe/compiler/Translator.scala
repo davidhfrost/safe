@@ -896,11 +896,15 @@ class Translator(program: Program) {
         .map(_.get)
       IRExportVarStmt(s, exprStmts)
 
-    case ExportDefaultAssignmentStmt(_, assign) =>
-      assign match {
+    case ExportDefaultExpr(_, expr) =>
+      expr match {
         case FunExpr(_, ftn) =>
-          val (fn :: rest, _) = walkFunExpr(assign, env, freshId, None)
+          val (fn :: rest, _) = walkFunExpr(expr, env, freshId, None)
           IRExportDefaultStmt(s, fn)
+        case _ =>
+          val (stmts, irExpr) = walkExpr(expr, env, freshId)
+          val exprStmt = IRExprStmt(s, freshId, irExpr)
+          IRExportDefaultStmt(s, exprStmt)
       }
 
     case _ =>

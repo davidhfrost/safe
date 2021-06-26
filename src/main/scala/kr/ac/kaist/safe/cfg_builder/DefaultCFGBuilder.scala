@@ -650,6 +650,8 @@ class DefaultCFGBuilder(
         stmt match {
           case IRFunExpr(_, lhs, fun) =>
             tailBlock.createInst(CFGDefaultExport(stmt, _, id2cfgId(lhs)))
+          case IRExprStmt(_, lhs, expr, _) =>
+            tailBlock.createInst(CFGDefaultExport(stmt, _, id2cfgId(lhs)))
         }
 
         (List(tailBlock), lmap.updated(ThrowLabel, (ThrowLabel of lmap) + tailBlock))
