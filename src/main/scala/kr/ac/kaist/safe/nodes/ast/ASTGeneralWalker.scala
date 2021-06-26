@@ -135,6 +135,12 @@ trait ASTGeneralWalker[Result] {
       join(walk(info) :: vars.map(walk): _*)
     case ExportDefaultAssignmentStmt(info, assign) =>
       join(walk(info), walk(assign))
+
+    // class statements
+    case ClassDeclaration(info, name, methods) =>
+      join(walk(info) :: walk(name) :: methods.map(walk): _*)
+    case ClassMethod(info, ftn, _) =>
+      join(walk(info), walk(ftn))
   }
 
   def walk(node: Expr): Result = node match {

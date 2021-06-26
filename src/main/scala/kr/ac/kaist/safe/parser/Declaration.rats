@@ -115,34 +115,34 @@ public LHS ClassExpression = class (w Id)? (w extends w superClass:LeftHandSide)
     yyValue = new Bool(NodeUtil.makeASTNodeInfo(span), true);
 };
 
-List<FunDecl> ClassBody =
+List<ClassMethod> ClassBody =
     opencurly w closecurly
     { yyValue = list(); }
   / opencurly w a1:ClassElement a2s:(w ClassElement)* w closecurly
     { yyValue = cons(a1, a2s.list()); };
 
 
-FunDecl ClassElement =
-    funDecl:MethodDefinition  {
+ClassMethod ClassElement =
+    fn:MethodDefinition  {
         Span span = createSpan(yyStart,yyCount);
-        yyValue = funDecl;
+        ASTNodeInfo info = NodeUtil.makeASTNodeInfo(span);
+        yyValue = new ClassMethod(info, fn, false);
     }
-  / static w funDecl:MethodDefinition {
+  / static w fn:MethodDefinition {
         Span span = createSpan(yyStart,yyCount);
-        yyValue = funDecl;
+        ASTNodeInfo info = NodeUtil.makeASTNodeInfo(span);
+        yyValue = new ClassMethod(info, fn, true);
     };
 
-// TODO: replace a1:Id with a1:PropName
-FunDecl MethodDefinition = a1:PropName w openparen a2:(w Params)? w closeparen w a3:FunctionBody
+Functional MethodDefinition = a1:PropName w openparen a2:(w Params)? w closeparen w a3:FunctionBody
      { Span span = createSpan(yyStart,yyCount);
        ASTNodeInfo info = NodeUtil.makeASTNodeInfo(span);
        scala.collection.immutable.List<Id> ids;
        if (a2 == null) ids = nilIds;
        else ids = toList(a2);
-       yyValue = new FunDecl(info,
-                             new Functional(info, nilFds, nilVds,
-                                            new Stmts(info, toList(a3._1()), a3._3()),
-                                            a1.toId(), ids, a3._2(), false), false);
+       yyValue = new Functional(info, nilFds, nilVds,
+                                new Stmts(info, toList(a3._1()), a3._3()),
+                                a1.toId(), ids, a3._2(), false);
      };
 // TODO: parse getters and setters
 /*

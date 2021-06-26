@@ -766,10 +766,24 @@ case class ExportClause(
 case class ClassDeclaration(
     info: ASTNodeInfo,
     name: Id,
-    methods: List[FunDecl]
+    methods: List[ClassMethod]
 ) extends Stmt {
   override def toString(indent: Int): String =
     s"class ${name.toString(0)} {\n" +
       methods.map(_.toString(0)).mkString("\n") + "\n" +
       "}"
+}
+
+case class ClassMethod(
+    info: ASTNodeInfo,
+    ftn: Functional,
+    static: Boolean
+) extends Stmt {
+  override def toString(indent: Int): String = {
+    val s: StringBuilder = new StringBuilder
+    comment.map(c => s.append(c.toString(indent)))
+    s.append("function ")
+      .append(ftn.toString(indent))
+    s.toString
+  }
 }

@@ -109,7 +109,9 @@ trait ASTWalker {
 
     // class statements
     case ClassDeclaration(info, name, methods) =>
-      ClassDeclaration(walk(info), walk(name), methods.map(walk))
+      ClassDeclaration(walk(info), walk(name), methods.map(walk).asInstanceOf[List[ClassMethod]])
+    case ClassMethod(info, ftn, static) =>
+      ClassMethod(walk(info), walk(ftn), static)
   }
 
   def walk(node: Expr): Expr = node match {

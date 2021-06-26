@@ -13,7 +13,7 @@ package kr.ac.kaist.safe.phase
 
 import scala.util.{ Success, Try }
 import kr.ac.kaist.safe.SafeConfig
-import kr.ac.kaist.safe.ast_rewriter.{ Disambiguator, Hoister, WithRewriter }
+import kr.ac.kaist.safe.ast_rewriter.{ Disambiguator, Hoister, WithRewriter, ClassRewriter }
 import kr.ac.kaist.safe.errors.ExcLog
 import kr.ac.kaist.safe.nodes.ast.Program
 import kr.ac.kaist.safe.util._
@@ -52,9 +52,12 @@ case object ASTRewrite extends PhaseObj[Program, ASTRewriteConfig, Program] {
   }
 
   def rewrite(pgm: Program): (Program, ExcLog) = {
+    val classRewriter = new ClassRewriter(pgm)
+    var program = classRewriter.result
+
     // hoist
-    val hoister = new Hoister(pgm)
-    var program = hoister.result
+    val hoister = new Hoister(program)
+    program = hoister.result
     var excLog = hoister.excLog
 
     // disambiguate
