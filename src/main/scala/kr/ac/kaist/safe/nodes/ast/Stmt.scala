@@ -775,6 +775,18 @@ case class ClassDeclaration(
       "}"
 }
 
+case class ClassExpr(
+    info: ASTNodeInfo,
+    name: Option[Id],
+    superClass: Option[LHS],
+    methods: List[ClassMethod]
+) extends LHS {
+  override def toString(indent: Int): String =
+    s"class ${name.getOrElse("")} {\n" +
+      methods.map(_.toString(0)).mkString("\n") + "\n" +
+      "}"
+}
+
 case class ClassMethod(
     info: ASTNodeInfo,
     ftn: Functional,

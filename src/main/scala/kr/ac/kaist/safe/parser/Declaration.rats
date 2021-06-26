@@ -99,13 +99,17 @@ ClassDeclaration ClassDeclaration = class w className:Id superClass:(w extends w
     );
 };
 
-/*
-        // Doesn't work.
-        public LHS ClassExpression = class className:(w Id)? superClass:(w extends w LeftHandSide)? w methods:ClassBody {
-            Span span = createSpan(yyStart,yyCount);
-            yyValue = new ClassDeclaration(NodeUtil.makeASTNodeInfo(span), className, Some.<LHS>apply(superClass), toList(methods));
-        };
-*/
+
+public LHS ClassExpression = class className:(w Id)? superClass:(w extends w LeftHandSide)? w methods:ClassBody {
+    Span span = createSpan(yyStart,yyCount);
+
+    yyValue = new ClassExpr(
+        NodeUtil.makeASTNodeInfo(span),
+        Option.<Id>apply(className),
+        Option.<LHS>apply(superClass),
+        toList(methods)
+    );
+};
 
 List<ClassMethod> ClassBody =
     opencurly w closecurly

@@ -41,6 +41,7 @@ trait ASTGeneralWalker[Result] {
         case e: Expr => walk(e)
         case c: Catch => walk(c)
         case l: Label => walk(l)
+        case i: Id => walk(i)
       })
     }
 
@@ -193,6 +194,10 @@ trait ASTGeneralWalker[Result] {
       join(walk(info), walk(lhs))
     case FunApp(info, fun, args) =>
       join(walk(info) :: walk(fun) :: args.map(walk): _*)
+
+    // added class expression
+    case ClassExpr(info, name, superClass, methods) =>
+      join(walk(info) :: walkOpt(name) ++ walkOpt(superClass) ++ methods.map(walk): _*)
   }
 
   def walk(node: NumberLiteral): Result = node match {

@@ -491,7 +491,8 @@ LHS MemberExpr =
     { yyValue = (LHS)apply(list, seed); };
 
 LHS MemberExprFront =
-     FunctionExpr
+     ClassExpression
+   / FunctionExpr
    / ArrowFunction
    / PrimaryExpr
    / new w a1:MemberExpr w a2:Args

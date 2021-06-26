@@ -426,16 +426,16 @@ private transient ExportDeclaration ExportDeclaration =
         Span span = createSpan(yyStart,yyCount);
         yyValue = new ExportVarStmt(NodeUtil.makeASTNodeInfo(span), toList(vars));
     }
+/*
+  / "export" w "default" w classDecl:ClassDeclaration {
+        Span span = createSpan(yyStart,yyCount);
+        yyValue = new ExportDefaultClass(NodeUtil.makeASTNodeInfo(span), classDecl);
+    }
+*/
   / "export" w "default" w expr:Assignment {
         Span span = createSpan(yyStart,yyCount);
         yyValue = new ExportDefaultExpr(NodeUtil.makeASTNodeInfo(span), expr);
     };
-
-  /* TODO:
-   * export Declaration
-   * export default HoistableDeclaration
-   * export default ClassDeclaration
-   */
 
 // reuse the parser for `NamedImports`, since it has the same syntax as `ExportClause`
 private transient ExportClause ExportClause =

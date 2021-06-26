@@ -164,6 +164,10 @@ trait ASTWalker {
       New(walk(info), walk(lhs))
     case FunApp(info, fun, args) =>
       FunApp(walk(info), walk(fun), args.map(walk))
+
+    // added class expression node
+    case ClassExpr(info, name, superClass, methods) =>
+      ClassExpr(walk(info), name.map(walk), superClass.map(walk), methods.map(walk).asInstanceOf[List[ClassMethod]])
   }
 
   def walk(node: NumberLiteral): NumberLiteral = node match {
