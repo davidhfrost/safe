@@ -69,22 +69,37 @@ case class Semantics(
   private def npmModulePath(moduleName: String): Option[String] =
     modeledNpmModules.get(moduleName).map(n => Useful.path(npmModuleDirs ++ List(n): _*))
 
+  private val jsExtensions = List[String](".js", ".jsx")
+
   // maps a *relative* module specifier path to its *absolute* canonical path.
-  private def resolveModuleSpecifierPath(path: String): String = {
+  // returns `None` if the module specifier is referencing a non-JS file
+  private def resolveModuleSpecifierPath(path: String): Option[String] = {
     // if the path starts with a period, it's (probably) a relative file path
+
     if (path.startsWith(".")) {
       // concatenate the source file's directory with the module specifier string
       val baseDir = Paths.get(new File(safeConfig.fileNames.head).getParentFile.getCanonicalPath)
       val fileName = baseDir.resolve(path).toString
 
-      // allow for an implicit `.js` suffix on module specifiers
-      if (fileName.endsWith(".js")) fileName
-      else fileName + ".js"
+      val baseName = fileName.substring(fileName.lastIndexOf("/"))
+      if (baseName.contains(".")) {
+        val extn = baseName.toString.split("\\.").last
+
+        // check if the file has an explicit extension *other than* a JS file.
+        // react programs may import non-js files, like CSS stylesheets or images.
+        if (jsExtensions.exists(fileName.endsWith(_))) Some(fileName)
+        else None
+      } else {
+        // add an implicit `.js` suffix on module specifiers with no explicit file extension
+        Some(fileName + ".js")
+      }
     } else {
       // if `path` doesn't start with a period, it's an npm package, which we can model from SAFE
       npmModulePath(path) match {
-        case Some(mp) => mp
-        case None => throw new Error(s"Unmodelled NPM module was imported: '${path}'")
+        case Some(mp) => Some(mp)
+        case None =>
+          println(s"Unmodelled NPM module was imported: '${path}'")
+          None
       }
     }
   }
@@ -751,51 +766,63 @@ case class Semantics(
       case CFGNoOp(_, _, _) => (st, excSt)
 
       case CFGNameSpaceImport(_, _, importedFile, binding) =>
-        val fileName = resolveModuleSpecifierPath(importedFile)
-        val st1 = importFile(fileName, st)
+        resolveModuleSpecifierPath(importedFile) match {
+          case Some(fileName) =>
+            val st1 = importFile(fileName, st)
 
-        val (exportObj, _) = getNameSpaceImportObj(fileName)
+            val (exportObj, _) = getNameSpaceImportObj(fileName)
 
-        // write the export obj to the location(s) referenced by `binding` in the heap
-        val (target, exc) = st1.lookup(binding)
-        val heap1 = target.locset.foldLeft(st1.heap)((nextHeap, loc) => nextHeap.update(loc, exportObj))
+            // write the export obj to the location(s) referenced by `binding` in the heap
+            val (target, exc) = st1.lookup(binding)
+            val heap1 = target.locset.foldLeft(st1.heap)((nextHeap, loc) => nextHeap.update(loc, exportObj))
 
-        // write the new heap to the state
-        val st2 = st1.copy(heap = heap1)
+            // write the new heap to the state
+            val st2 = st1.copy(heap = heap1)
 
-        (st2, excSt)
+            (st2, excSt)
+          case None =>
+            (st, excSt)
+        }
 
       case CFGDefaultImport(_, _, importedFile, binding) =>
         // imported files write to separate sections of the heap.
         // after importing the file, we first copy that updated heap into the program state.
-        val fileName = resolveModuleSpecifierPath(importedFile)
-        val st1 = importFile(fileName, st)
+        resolveModuleSpecifierPath(importedFile) match {
+          case Some(fileName) =>
+            val st1 = importFile(fileName, st)
 
-        // read the value of `importName` from the exports of `importedFile`.
-        val (v, _) = getDefaultImportValue(fileName)
+            // read the value of `importName` from the exports of `importedFile`.
+            val (v, _) = getDefaultImportValue(fileName)
 
-        // write that value to the identifier `binding` in the program state.
-        val st2 =
-          if (!v.isBottom) st1.varStore(binding, v)
-          else AbsState.Bot
+            // write that value to the identifier `binding` in the program state.
+            val st2 =
+              if (!v.isBottom) st1.varStore(binding, v)
+              else AbsState.Bot
 
-        (st2, excSt)
+            (st2, excSt)
+          case None =>
+            (st, excSt)
+        }
 
       case CFGImport(_, _, importedFile, binding, importName) =>
         // imported files write to separate sections of the heap.
         // after importing the file, we first copy that updated heap into the program state.
-        val fileName = resolveModuleSpecifierPath(importedFile)
-        val st1 = importFile(fileName, st)
+        resolveModuleSpecifierPath(importedFile) match {
+          case Some(fileName) =>
+            val st1 = importFile(fileName, st)
 
-        // read the value of `importName` from the exports of `importedFile`.
-        val (v, _) = getImportValue(fileName, importName)
+            // read the value of `importName` from the exports of `importedFile`.
+            val (v, _) = getImportValue(fileName, importName)
 
-        // write that value to the identifier `binding` in the program state.
-        val st2 =
-          if (!v.isBottom) st1.varStore(binding, v)
-          else AbsState.Bot
+            // write that value to the identifier `binding` in the program state.
+            val st2 =
+              if (!v.isBottom) st1.varStore(binding, v)
+              else AbsState.Bot
 
-        (st2, excSt)
+            (st2, excSt)
+          case None =>
+            (st, excSt)
+        }
 
       case CFGDefaultExport(_, _, binding) =>
         defaultExport = Some(ExportedId(binding))
