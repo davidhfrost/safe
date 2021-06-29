@@ -603,6 +603,12 @@ class Hoister(program: Program) {
       case FunDecl(info, Functional(j, Nil, Nil, Stmts(i, body, str), name, params, bodyS, isArrow), strict) =>
         val (fds, vds, newBody) = hoist(body, params, strict)
         FunDecl(info, Functional(j, fds, vds, Stmts(i, newBody, str), name, params, bodyS, isArrow), strict)
+
+      // added to allow pre-hoisted fds and vds from a pre-rewritten imported file
+      case FunDecl(info, Functional(j, fds, vds, Stmts(i, body, str), name, params, bodyS, isArrow), strict) =>
+        val (newFds, newVds, newBody) = hoist(body, params, strict)
+        FunDecl(info, Functional(j, fds ++ newFds, vds ++ newVds, Stmts(i, newBody, str), name, params, bodyS, isArrow), strict)
+
       case (fd: FunDecl) =>
         excLog.signal(BeforeHoisterError("Function declarations", fd)); fd
     }

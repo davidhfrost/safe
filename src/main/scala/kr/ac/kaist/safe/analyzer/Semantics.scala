@@ -57,7 +57,7 @@ case class Semantics(
   val importedFiles: MMap[String, AnalysisData] = MMap()
   var numImportedFiles: Int = heapBuildConfig.initNumImportedFiles
   val fidsPerFile: Int = 1000
-  val userAsitesPerFile: Int = 10000
+  val userAsitesPerFile: Int = 100000
 
   // the directory containing modeled NPM modules
   private val npmModuleDirs = List("src", "main", "resources", "modules")
@@ -1880,8 +1880,6 @@ case class Semantics(
     val tp = cp.tracePartition
     val loc = Loc(i.asite, tp)
     val st1 = st.alloc(loc)
-    //println("internalCI")
-    //println("i.fun: " + i.fun)
     val (funVal, funExcSet) = V(i.fun, st1)
     //println("funVal: " + funVal)
     //funVal.locset.foreach(loc => println("loc: " + loc))

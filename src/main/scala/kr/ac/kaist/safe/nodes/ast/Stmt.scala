@@ -761,8 +761,6 @@ case class ExportClause(
   def this(namedImports: NamedImports) = this(namedImports.info, namedImports.importsList)
 }
 
-// new App()
-
 case class ClassDeclaration(
     info: ASTNodeInfo,
     name: Id,

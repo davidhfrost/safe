@@ -115,7 +115,7 @@ object WebServer extends {
                 parser(List(s"-config=$testJSON"))
 
                 // AST
-                val (ast, _) = ASTRewrite.rewrite(pgm)
+                val (ast, _) = ASTRewrite.rewrite(testSafeConfig, pgm)
                 complete(ast.toString)
 
                 // Translate AST -> IR.
