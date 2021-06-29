@@ -114,7 +114,7 @@ class ModuleRewriter(basePath: String, program: Program) {
     Return(info, Some(VarRef(info, exportsObjId(info))))
 
   // generates the code `___exports___[binding] = [value]`
-  def exportAssignmentStmt(info: ASTNodeInfo, binding: Id, value: LHS): Stmt = {
+  def exportAssignmentStmt(info: ASTNodeInfo, binding: Id, value: Expr): Stmt = {
     // `___exports___[binding]`
     val lhs = Dot(info, VarRef(info, exportsObjId(info)), binding)
     val assignment = AssignOpApp(info, lhs, Op(info, "="), value)
@@ -230,7 +230,7 @@ class ModuleRewriter(basePath: String, program: Program) {
       case SameNameImportSpecifier(info, binding) =>
         exportAssignmentStmt(info, binding, VarRef(binding.info, binding))
       case RenamedImportSpecifier(info, binding, id) =>
-        exportAssignmentStmt(info, binding, VarRef(id.info, id))
+        exportAssignmentStmt(info, id, VarRef(binding.info, binding))
     }
 
     ABlock(exportClause.info, assignments, false)
@@ -251,8 +251,21 @@ class ModuleRewriter(basePath: String, program: Program) {
       //      case ExportFromOther(info, export, from) =>
       case ExportSelf(info, export) =>
         translateExportClause(export)
-      //      case ExportVarStmt(info, vars) =>
-      //      case ExportDefaultExpr(info, expr) =>
+        
+      case ExportVarStmt(info, vars) =>
+        // map each `VarDecl` in the export declaration to an equivalent statement.
+        val stmts: List[Stmt] = vars.map {
+          case decl @ VarDecl(info, name, Some(expr), strict) =>
+            val declStmts = List(VarStmt(info, List(decl)), exportAssignmentStmt(info, name, expr))
+            ABlock(info, declStmts, false)
+          case decl @ VarDecl(info, name, None, strict) =>
+            println(s"ignored exported `VarDecl`: ${decl.toString(0)}")
+            EmptyStmt(info)
+        }
+        ABlock(info, stmts, false)
+
+      case ExportDefaultExpr(info, expr) =>
+        exportAssignmentStmt(info, defaultId(info), expr)
     }
   }
 

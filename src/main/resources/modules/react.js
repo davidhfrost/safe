@@ -288,6 +288,7 @@ ReactState.prototype.extractCompDesc = function(element) {
 
 ReactState.prototype.printState = function() {
   var result = '\n====== Shape Map ======\n\n';
+  @Print(this.shapeMap)
   for (var key in this.shapeMap) {
     var shape = this.shapeMap[key];
     result += key + ': '
