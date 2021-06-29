@@ -663,6 +663,20 @@ case class Semantics(
         v.locset.foreach(loc => println(st.heap.toStringLoc(loc).get))
         (st, excSt)
       }
+
+      // allow the first argument of `@Print` be a label for the print statement
+      case (NodeUtil.INTERNAL_PRINT, List(label, expr), None) => {
+        val (labelV, _) = V(label, st)
+        val (v, excSet) = V(expr, st)
+
+        println(s"[DEBUG:$label] $cp")
+        println(s"        expression: $expr")
+        println(s"        exceptions: $excSet")
+        println(s"        pvalue    : ${v.pvalue}")
+        println(s"        objects:")
+        v.locset.foreach(loc => println(st.heap.toStringLoc(loc).get))
+        (st, excSt)
+      }
       case (NodeUtil.INTERNAL_NOT_YET_IMPLEMENTED, List(expr), None) => {
         val (v, excSet) = V(expr, st);
         excLog.signal(SemanticsNotYetImplementedError(v, cp))
