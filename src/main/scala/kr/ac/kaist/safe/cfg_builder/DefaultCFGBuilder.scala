@@ -615,47 +615,6 @@ class DefaultCFGBuilder(
 
         (List(loopOutBlock), lm.updated(ThrowLabel, (ThrowLabel of lm) + loopBodyBlock + loopOutBlock))
 
-      case stmt: IRImportDeclaration =>
-        val tailBlock: NormalBlock = getTail(blocks, func)
-        translateImportDecl(stmt, tailBlock)
-        (List(tailBlock), lmap.updated(ThrowLabel, (ThrowLabel of lmap) + tailBlock))
-
-      case IRExportSelf(_, export) =>
-        val tailBlock: NormalBlock = getTail(blocks, func)
-        export.exportsList.foreach(exp => exp match {
-          case IRSameNameSpecifier(_, binding) =>
-            val cfgId = id2cfgId(binding)
-            tailBlock.createInst(CFGExport(stmt, _, cfgId, cfgId))
-          case IRRenamedSpecifier(_, binding, name) =>
-            tailBlock.createInst(CFGExport(stmt, _, id2cfgId(binding), id2cfgId(name)))
-        })
-        (List(tailBlock), lmap.updated(ThrowLabel, (ThrowLabel of lmap) + tailBlock))
-
-      case IRExportVarStmt(ast, vars) =>
-        val tailBlock: NormalBlock = getTail(blocks, func)
-        vars.foreach(s => s match {
-          case IRExprStmt(_, id, expr, _) =>
-            val cfgId = id2cfgId(id)
-            tailBlock.createInst(CFGExport(s, _, cfgId, cfgId))
-            tailBlock.createInst(CFGExprStmt(stmt, _, cfgId, ir2cfgExpr(expr)))
-        })
-
-        (List(tailBlock), lmap.updated(ThrowLabel, (ThrowLabel of lmap) + tailBlock))
-
-      case IRExportDefaultStmt(ast, stmt) =>
-        val tailBlock: NormalBlock = getTail(blocks, func)
-
-        translateStmt(stmt, func, blocks, lmap)
-
-        stmt match {
-          case IRFunExpr(_, lhs, fun) =>
-            tailBlock.createInst(CFGDefaultExport(stmt, _, id2cfgId(lhs)))
-          case IRExprStmt(_, lhs, expr, _) =>
-            tailBlock.createInst(CFGDefaultExport(stmt, _, id2cfgId(lhs)))
-        }
-
-        (List(tailBlock), lmap.updated(ThrowLabel, (ThrowLabel of lmap) + tailBlock))
-
       case _ => {
         excLog.signal(IRIgnored(stmt))
         (blocks, lmap)
@@ -666,39 +625,6 @@ class DefaultCFGBuilder(
     //case IRWith(info, expr, stmt) => (Nil, labelMap)
     //case IRGetProp(info, fun) => (Nil, labelMap)
     //case IRSetProp(info, fun) => (Nil, labelMap)
-  }
-
-  private def translateSpecifierIds(spec: IRImportSpecifier): (CFGId, CFGId) = spec match {
-    case IRSameNameSpecifier(_, binding) =>
-      val cfgId = id2cfgId(binding)
-      (cfgId, cfgId)
-    case IRRenamedSpecifier(_, binding, name) =>
-      (id2cfgId(binding), id2cfgId(name))
-  }
-
-  private def translateImportDecl(s: IRImportDeclaration, tailBlock: NormalBlock): Unit = s match {
-    case IRFromImportDeclaration(_, importClause, fromClause) =>
-      val importedFile = fromClause.moduleSpecifier.moduleName match {
-        case IRVal(EJSString(str)) => str
-        case _ => "?"
-      }
-
-      importClause match {
-        case IRImportedDefaultBinding(_, name) =>
-          tailBlock.createInst(CFGDefaultImport(s, _, importedFile, id2cfgId(name)))
-        case IRNameSpaceImport(_, name) =>
-          val cfgId = id2cfgId(name)
-          tailBlock.createInst(CFGAlloc(s, _, cfgId, None, newASite))
-          tailBlock.createInst(CFGNameSpaceImport(s, _, importedFile, cfgId))
-        case IRNamedImports(_, importsList) =>
-          importsList.foreach(imp => {
-            val (nameId, bindingId) = translateSpecifierIds(imp)
-            tailBlock.createInst(CFGImport(s, _, importedFile, bindingId, nameId.text))
-          })
-      }
-
-    case IRModuleImportDeclaration(_, fromClause) =>
-      ()
   }
 
   /* mem rule : IRField x NormalBlock x IRId -> Unit */

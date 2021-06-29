@@ -251,7 +251,7 @@ class ModuleRewriter(basePath: String, program: Program) {
       //      case ExportFromOther(info, export, from) =>
       case ExportSelf(info, export) =>
         translateExportClause(export)
-        
+
       case ExportVarStmt(info, vars) =>
         // map each `VarDecl` in the export declaration to an equivalent statement.
         val stmts: List[Stmt] = vars.map {
