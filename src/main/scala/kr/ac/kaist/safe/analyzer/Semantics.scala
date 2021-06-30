@@ -517,7 +517,22 @@ case class Semantics(
 
         val n = AbsNum(f.argVars.length)
         val localEnv = st2.context.pureLocal
-        val h3 = st2.heap.update(loc1, AbsObj.newFunctionObject(f.id, localEnv.outer, loc2, n))
+        var fnObj = AbsObj.newFunctionObject(f.id, localEnv.outer, loc2, n)
+
+        if (f.name.contains("<>")) {
+          // "<>" in the function's name means that the name was automatically generated
+          // by SAFE, and that the function was anonymous in the original code.
+          // in this case, the `name` of the function is determined by `lhs`.
+
+          // (this case is unimplemented; the `name` property is left undefined)
+        } else {
+          // if the function was defined with a name, assign it to the `name` property
+          // of the function object.
+          val dataProp = AbsDataProp(AbsValue(f.name), AT, AT, AF)
+          fnObj = fnObj.update("name", dataProp)
+        }
+
+        val h3 = st2.heap.update(loc1, fnObj)
 
         val fVal = AbsValue(loc1)
         val h4 = h3.update(loc2, oNew.update("constructor", AbsDataProp(fVal, AT, AF, AT)))

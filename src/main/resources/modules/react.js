@@ -82,7 +82,7 @@ function ReactState() {
 
 ReactState.prototype.mountElement = function mountElement(elt) {
   var desc = this.extractCompDesc(elt);
-  //this.mount(desc);
+  this.mount(desc);
 };
 
 ReactState.prototype.mount = function mount(comp) {
@@ -251,15 +251,11 @@ ReactState.prototype.setState = function(loc, newState) {
 };
 
 ReactState.prototype.extractCompDesc = function(element) {
-  @Print(element)
-  @Print(typeof element)
   // plain text
   if (typeof element === 'undefined') {
     return new CompDesc('plaintext', { text: '' }, []);
   }
   else if (typeof element === 'string') {
-    @Print("here")
-    return 3;
     return new CompDesc('plaintext', { text: element }, []);
   }
   // html element
@@ -288,7 +284,6 @@ ReactState.prototype.extractCompDesc = function(element) {
 
 ReactState.prototype.printState = function() {
   var result = '\n====== Shape Map ======\n\n';
-  @Print(this.shapeMap)
   for (var key in this.shapeMap) {
     var shape = this.shapeMap[key];
     result += key + ': '
