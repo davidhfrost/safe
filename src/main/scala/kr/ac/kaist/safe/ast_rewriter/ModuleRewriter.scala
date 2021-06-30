@@ -33,9 +33,11 @@ private object ModuleResolver {
   // the path to the directory containing modeled NPM modules (relative to the root SAFE dir)
   private val npmModuleDirs = List("src", "main", "resources", "modules")
 
-  // a mapping of (module
+  // maps NPM module names with models to the files containing those models.
+  // all models are contained in the directory pointed to by `npmModuleDirs`.
   private val modeledNpmModules: Map[String, String] = Map(
-    ("react", "react.js")
+    ("react", "react.js"),
+    ("react-dom", "react-dom.js")
   )
 
   private def npmModulePath(moduleName: String): Option[String] =
