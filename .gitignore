@@ -29,3 +29,4 @@ doc/icse-demo/main.pdf
 .idea/
 safe.iml
 debugger/
+tests/convert-react-programs/node_modules
