@@ -40,6 +40,7 @@ private object ModuleResolver {
     ("react-dom", "react-dom.js")
   )
 
+  // maps an NPM module name to the path to its modeled source file.
   private def npmModulePath(moduleName: String): Option[String] =
     modeledNpmModules.get(moduleName).map(n => Useful.path(npmModuleDirs ++ List(n): _*))
 
