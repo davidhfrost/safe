@@ -210,11 +210,11 @@ ReactState.prototype.extractCompDesc = function(element) {
 
 ReactState.prototype.printState = function() {
   var result = '\n====== Shape Map ======\n\n';
-  for (var key in this.shapeMap) {
-    var shape = this.shapeMap[key];
-    result += key + ': '
-            + shape.mountedComp.toString(this.heap, shape.childLocs)
-            + '\n';
+  for (var i = 0; i < this.nextLoc; i++) {
+      var shape = this.shapeMap[i];
+      result += i + ': '
+              + shape.mountedComp.toString(this.heap, shape.childLocs)
+              + '\n';
   }
 
   return result;

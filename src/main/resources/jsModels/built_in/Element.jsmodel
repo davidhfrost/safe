@@ -611,7 +611,8 @@ Function: {
   \\],
   24: [\\
   function getElementById() {
-    @NotYetImplemented("getElementById");
+    //@NotYetImplemented("getElementById");
+    return null;
   }
   \\],
   25: [\\
@@ -621,7 +622,8 @@ Function: {
   \\],
   26: [\\
   function getElementById() {
-    @NotYetImplemented("getElementById");
+    //@NotYetImplemented("getElementById");
+    return null;
   }
   \\],
   27: [\\

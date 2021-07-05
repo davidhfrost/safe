@@ -295,6 +295,11 @@ class ModuleRewriter(basePath: String, program: Program) {
       case e: ExportDeclaration =>
         translateExportDecl(e)
 
+      // remove import statements that don't explicitly import any values.
+      // (e.g. `import 'file.js'`)
+      case ModuleImportDeclaration(info, _) =>
+        EmptyStmt(info)
+
       case _ => super.walk(stmt)
     }
   }
