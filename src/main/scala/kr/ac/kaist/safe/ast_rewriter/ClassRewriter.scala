@@ -90,15 +90,21 @@ class ClassRewriter(program: Program) {
   }
 
   def classStmts(info: ASTNodeInfo, className: Id, superClass: Option[LHS], methods: List[ClassMethod]): Stmt = {
+    val superRewriteWalker = SuperRewriteWalker(superClass)
+
     // build the constructor, which is a function declaration
     val constructor = methods.find(isConstructor) match {
       // splice the body of an explicit `constructor` method into
       // a function declaration named `className`.
-      case Some(cm) => FunDecl(info, cm.ftn.copy(name = className), strict = false)
+      case Some(cm) =>
+        val decl = FunDecl(info, cm.ftn.copy(name = className), strict = false)
+        superRewriteWalker.walk(decl)
 
       // if no explicit constructor is given, create an empty function declaration
       // to serve as the constructor.
-      case None => FunDecl(info, emptyFunctional(info, className), strict = false)
+      case None =>
+        val decl = FunDecl(info, emptyFunctional(info, className), strict = false)
+        superRewriteWalker.walk(decl)
     }
 
     val inheritance: List[Stmt] = superClass match {
@@ -106,11 +112,38 @@ class ClassRewriter(program: Program) {
       case Some(_superClass) => inheritanceStmts(className, _superClass)
     }
 
-    val methodDefns: List[Stmt] = methods.filterNot(isConstructor).map(methodStmt(className, _))
+    val methodDefns: List[Stmt] = methods.filterNot(isConstructor)
+      .map(methodStmt(className, _))
+      .map(superRewriteWalker.walk)
 
-    // roll the constructor and the methods together into a single block of statements.
+    // group the constructor and the methods together into a single block of statements.
     val stmts = constructor :: inheritance ++ methodDefns
     ABlock(info, stmts, false)
+  }
+
+  private case class SuperRewriteWalker(superClass: Option[LHS]) extends ASTWalker {
+    override def walk(lhs: LHS): LHS = lhs match {
+      case f @ FunApp(fInfo, fun, args) =>
+        fun match {
+          // `super([args])` -> `[superClass].call(this, [args])`
+          case v @ VarRef(vInfo, Id(_, "super", _, _)) =>
+            val dotCall = Dot(vInfo, superClass.getOrElse(v), id(vInfo, "call"))
+            FunApp(fInfo, dotCall, This(fInfo) :: args)
+
+          // `super.[method]([args])` -> `[superClass].prototype.[method].call(this, [args])`
+          case d @ Dot(dInfo, VarRef(vInfo, Id(_, "super", _, _)), member) =>
+            val dotProto = Dot(dInfo, superClass.getOrElse(d), id(vInfo, "prototype"))
+            val dotMethod = Dot(dInfo, dotProto, member)
+            val dotCall = Dot(dInfo, dotMethod, id(vInfo, "call"))
+            FunApp(fInfo, dotCall, This(fInfo) :: args)
+
+          case _ =>
+            FunApp(fInfo, walk(fun), args)
+        }
+
+      case _ =>
+        super.walk(lhs)
+    }
   }
 
   private object ClassRewriteWalker extends ASTWalker {
