@@ -340,7 +340,22 @@ Heap: {
     "Infinity": <Infinity, F, F, F>,
     "SyntaxError": <#SyntaxError, T, F, T>,
     "<>Global<>true": <true, F, F, F>,
-    "undefined": <undefined, F, F, F>
+    "undefined": <undefined, F, F, F>,
+    "console": <#console, F, F, F>
+  },
+  #console: {
+    [[Class]]: "console",
+    [[Extensible]]: true,
+    [[Prototype]]: #Object.prototype,
+    "log": <#console.log, F, F, F>
+  },
+  #console.log: {
+    [[Class]]: "Function",
+    [[Extensible]]: true,
+    [[Prototype]]: #Function.prototype,
+    [[Scope]]: null,
+    [[Call]]: fun(143),
+    "length": <1.0, F, F, F>
   },
   #Math.min: {
     [[Class]]: "Function",
@@ -5141,5 +5156,11 @@ Function: {
   function ToNumber (v) {
     return @ToNumber(@getLoc('ToPrimitive')(v, 'number'));
   }
+  \\],
+  143: [\\
+  function log (v) {
+    return undefined;
+  }
   \\]
+
 }

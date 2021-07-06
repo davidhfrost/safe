@@ -2,13 +2,22 @@ var React = {
   createElement: function(type, props, children) {
     if (props === null) props = {};
 
+    // merge default props into undefined keys of `props`
+    if (type.defaultProps !== undefined) {
+      for (var key in type.defaultProps) {
+        if (props[key] === undefined) {
+          props[key] = type.defaultProps[key];
+        }
+      }
+    }
+
     var childArray = [];
 
     for (var i = 2; i < arguments.length; i++) {
       var child = arguments[i];
       if (child === null) continue;
-      if (typeof child === 'string') {
-        child = { type: 'plaintext', props: { text: child, children: [] } };
+      if (typeof child === 'string' || typeof child === 'number') {
+        child = { type: 'plaintext', props: { text: child.toString(), children: [] } };
       }
 
       if (Array.isArray(child)) {
@@ -23,6 +32,12 @@ var React = {
     props.children = childArray;
 
     return { type: type, props: props };
+  },
+
+  PropTypes: {
+    object: 'object',
+    string: 'string',
+    number: 'number'
   }
 };
 

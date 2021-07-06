@@ -210,6 +210,7 @@ ReactState.prototype.extractCompDesc = function(element) {
 
 ReactState.prototype.printState = function() {
   var result = '\n====== Shape Map ======\n\n';
+
   for (var i = 0; i < this.nextLoc; i++) {
       var shape = this.shapeMap[i];
       result += i + ': '
@@ -244,7 +245,9 @@ ReactState.prototype.printHtmlRec = function(loc, indent) {
     result += indent + '<' + tag + '@' + loc;
     for (var key in props) {
       if (key === 'children' || key === 'render' || key === '$$instance') continue;
-      result += ' ' + key + '=' + '"' + props[key] + '"';
+      if (props[key] === undefined) continue;
+      var propStr = typeof props[key] === 'function' ? '[Function]' : props[key].toString()
+      result += ' ' + key + '=' + '"' + propStr + '"';
     }
     result += '>\n';
 
@@ -281,7 +284,9 @@ CompDesc.prototype.toString = function(heap, loc, childLocs) {
   var result = '<' + type + ' @' + loc + '';
   for (var key in this.props) {
     if (key === 'children' || key === 'render' || key === '$$instance') continue;
-    result += ' ' + key + '=' + '"' + this.props[key] + '"';
+    if (this.props[key] === undefined) continue;
+    var propStr = typeof this.props[key] === 'function' ? '[Function]' : this.props[key].toString();
+    result += ' ' + key + '=' + '"' +  propStr + '"';
   }
   result += '>';
 
