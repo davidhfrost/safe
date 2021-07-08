@@ -311,8 +311,10 @@ var ReactDOM = {
   render: function(element, container) {
     var state = new ReactState();
     state.mountElement(element);
+
     @Print("printState", state.printState())
     @Print("printHtml", state.printHtml(0))
+
     return state;
   },
 

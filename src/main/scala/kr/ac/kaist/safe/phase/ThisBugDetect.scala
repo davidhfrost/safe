@@ -21,9 +21,9 @@ import kr.ac.kaist.safe.util._
 import kr.ac.kaist.safe.analyzer.TracePartition
 
 // ReactBugDetect phase
-case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics), ReactBugDetectConfig, CFG] {
-  val name: String = "reactBugDetector"
-  val help: String = "Detect possible bugs in React programs."
+case object ThisBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics), ThisBugDetectConfig, CFG] {
+  val name: String = "thisBugDetector"
+  val help: String = "Detect possible misuse of the `this` keyword."
 
   // TODO
   // Generators of bug detector messages
@@ -323,7 +323,7 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
   def apply(
     in: (CFG, Int, TracePartition, Semantics),
     safeConfig: SafeConfig,
-    config: ReactBugDetectConfig
+    config: ThisBugDetectConfig
   ): Try[CFG] = {
     val (cfg, _, _, semantics) = in
 
@@ -340,13 +340,13 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
     Success(cfg)
   }
 
-  def defaultConfig: ReactBugDetectConfig = ReactBugDetectConfig()
-  val options: List[PhaseOption[ReactBugDetectConfig]] = List(
+  def defaultConfig: ThisBugDetectConfig = ThisBugDetectConfig()
+  val options: List[PhaseOption[ThisBugDetectConfig]] = List(
     ("silent", BoolOption(c => c.silent = true),
       "messages during bug detection are muted.")
   )
 }
 
-case class ReactBugDetectConfig(
+case class ThisBugDetectConfig(
   var silent: Boolean = false
 ) extends Config

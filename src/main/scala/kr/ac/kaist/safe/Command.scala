@@ -137,7 +137,7 @@ case object CmdBugDetect extends CommandObj("bugDetect", CmdAnalyze >> BugDetect
   override def display(cfg: CFG): Unit = ()
 }
 
-case object CmdReactBugDetect extends CommandObj("reactBugDetect", CmdAnalyze >> ReactBugDetect) {
+case object CmdThisBugDetect extends CommandObj("thisBugDetect", CmdAnalyze >> ThisBugDetect) {
   override def display(cfg: CFG): Unit = ()
 }
 
