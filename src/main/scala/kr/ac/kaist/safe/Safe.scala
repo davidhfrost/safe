@@ -26,6 +26,7 @@ object Safe {
       case str :: args => cmdMap.get(str) match {
         case Some(CmdAnalyze) => CmdAnalyze(s"-config=$CONFIG_FILE" :: args, false)
         case Some(CmdThisBugDetect) => CmdThisBugDetect(s"-config=$CONFIG_FILE" :: args, false)
+        case Some(CmdReactBugDetect) => CmdReactBugDetect(s"-config=$CONFIG_FILE" :: args, false)
         case Some(cmd) => cmd(args, false)
         case None => Failure(NoCmdError(str))
       }
@@ -80,7 +81,8 @@ object Safe {
     CmdBugDetect,
     CmdHelp,
     CmdWeb,
-    CmdThisBugDetect
+    CmdThisBugDetect,
+    CmdReactBugDetect
   )
   val cmdMap = commands.foldLeft[Map[String, Command]](Map()) {
     case (map, cmd) => map + (cmd.name -> cmd)
