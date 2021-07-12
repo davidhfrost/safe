@@ -225,8 +225,9 @@ case class NormalBlock(func: CFGFunction, label: LabelKind = NoLabel) extends CF
           .append(LINE_SEP)
       case false => insts.reverseIterator.foreach {
         case inst =>
+          val metadata = s"${inst.id}: ${inst.getClass.getSimpleName}"
           s.append(pre)
-            .append(s"  [${inst.id}] $inst")
+            .append(s"  [${metadata.padTo(21, ' ')}] $inst")
             .append(LINE_SEP)
       }
     }

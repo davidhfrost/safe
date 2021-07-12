@@ -26,6 +26,18 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
   val help: String = "Detect bugs in React applications."
 
   def checkBlock(cfg: CFG, semantics: Semantics, block: CFGBlock): List[String] = {
+    println("new block")
+    println(block.toString(0))
+
+    block.getInsts.reverse.foreach(inst => inst match {
+      case CFGExprStmt(_, _, lhs, right) => {
+        println("lhs: " + lhs)
+        println("right: " + right)
+      }
+
+      case _ => ()
+    })
+
     List()
   }
 
