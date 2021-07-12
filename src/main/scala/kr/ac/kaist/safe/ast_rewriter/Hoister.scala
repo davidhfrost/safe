@@ -617,6 +617,12 @@ class Hoister(program: Program) {
       case FunExpr(info, Functional(j, Nil, Nil, Stmts(i, body, strict), name, params, bodyS, isArrow)) =>
         val (fds, vds, newBody) = hoist(body, params, strict)
         FunExpr(info, Functional(j, fds, vds, Stmts(i, newBody, strict), name, params, bodyS, isArrow))
+
+      // added to allow pre-hoisted fds and vds from a pre-rewritten imported file
+      case FunExpr(info, Functional(j, fds, vds, Stmts(i, body, strict), name, params, bodyS, isArrow)) =>
+        val (newFds, newVds, newBody) = hoist(body, params, strict)
+        FunExpr(info, Functional(j, fds ++ newFds, vds ++ newVds, Stmts(i, newBody, strict), name, params, bodyS, isArrow))
+
       case (fe: FunExpr) =>
         excLog.signal(BeforeHoisterError("Function expressions", fe)); fe
       case _ => super.walk(node)
