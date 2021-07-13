@@ -19,26 +19,97 @@ import kr.ac.kaist.safe.nodes.cfg._
 import kr.ac.kaist.safe.LINE_SEP
 import kr.ac.kaist.safe.util._
 import kr.ac.kaist.safe.analyzer.TracePartition
+import kr.ac.kaist.safe.analyzer.model.GLOBAL_LOC
 
 // ReactBugDetect phase
 case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics), ReactBugDetectConfig, CFG] {
   val name: String = "reactBugDetector"
   val help: String = "Detect bugs in React applications."
 
-  def checkBlock(cfg: CFG, semantics: Semantics, block: CFGBlock): List[String] = {
-    println("new block")
-    println(block.toString(0))
+  private def computeThisDotStateLocs(state: AbsState): Set[Loc] = {
+    // compute all possible heap locations of `this.state`.
+    var thisDotStateLocs = Set[Loc]()
 
-    block.getInsts.reverse.foreach(inst => inst match {
-      case CFGExprStmt(_, _, lhs, right) => {
-        println("lhs: " + lhs)
-        println("right: " + right)
+    // read the value of `this` from the state.
+    val thisValue = state.context.thisBinding
+
+    // abstract value:
+    // - a list of possible literal values (3, 7, 'asdf', true/false)
+    // - a list of possible heap locations
+
+    // for each possible heap location of `thisValue`, get the heap object at that location.
+    thisValue.locset.foreach(thisLoc => {
+      // get the object at location `thisLoc` in the heap.
+      val thisObj = state.heap.get(thisLoc)
+
+      // read the `state` property at that object.
+      thisObj.nmap.map.get("state") match {
+        // if `this.state` is defined:
+        case Some(thisDotState) =>
+          // read out the underlying abstract value from the data recorded in `thisObj`.
+          val thisDotStateValue = thisDotState.value.value
+
+          // add all of its possible locations to `thisDotStateLocs`.
+          thisDotStateValue.locset.foreach(loc => thisDotStateLocs += loc)
+
+        // if `this.state` is not defined, do nothing.
+        case None => ()
       }
-
-      case _ => ()
     })
 
-    List()
+    thisDotStateLocs
+  }
+
+  // returns a list of `String` warnings to print which declare the bugs found in `block`.
+  private def checkBlock(cfg: CFG, semantics: Semantics, block: CFGBlock): List[String] = {
+    var warnings = List[String]()
+
+    // iterate over all possible program states when the block starts.
+    // each block can have many starting states, indexed by a `TracePartition` value.
+    // so for a given block, all states can be described as a list of pairs: `(TracePartition, AbsState)`.
+    semantics.getState(block).foreach {
+      case (tp, initialBlockState) => {
+        val cp = ControlPoint(block, tp)
+        var state = initialBlockState
+
+        val thisDotStateLocs = computeThisDotStateLocs(state)
+        if (thisDotStateLocs.nonEmpty) {
+          //          println("thisDotStateLocs: " + thisDotStateLocs)
+          //          println("block: " + block.toString(0))
+        }
+
+        // block instructions are stored in reverse order (for some reason),
+        // so we need to re-reverse the instruction list to get the original order.
+        block.getInsts.reverse.foreach {
+          case i: CFGNormalInst =>
+            // apply this instruction to the program state, producing a new state `nextState`.
+            val (nextState, _) = semantics.I(cp, i, state, AbsState.Bot)
+            state = nextState
+
+            i match {
+              // obj[index] = rhs
+              case CFGStore(ir, block, obj, index, rhs) =>
+                // figure out if `obj` coincides with `this.state`?
+                // in order to check if they coincide, we need an `AbsValue` for obj
+                val (objValue, exceptionSet) = semantics.V(obj, state)
+                val objLocs = objValue.locset
+                //                println("objLocs: " + objLocs)
+
+                objLocs.foreach(objLoc => {
+                  if (thisDotStateLocs.contains(objLoc)) {
+                    warnings ++= List("found bug at: " + obj.ir.ast.info)
+                  }
+                })
+
+              case _ => ()
+            }
+
+          case _ => ()
+        }
+      }
+    }
+
+    warnings
   }
 
   def apply(

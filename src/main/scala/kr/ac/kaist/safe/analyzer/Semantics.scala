@@ -382,8 +382,8 @@ case class Semantics(
         (newSt, excSt)
       }
 
-      // `x`: the identifier receiving the value of `this`
-      // `e`: the expression which holds the default value of `this` (global object or method receiver)
+      // `thisId`: the identifier receiving the value of `this`
+      // `thisExpr`: the expression which holds the default value of `this` (global object or method receiver)
       case CFGEnterCode(_, _, thisId, thisExpr) => {
         // compute the abstract value of `this` from the program state.
         // note that we capture exceptions raised by this computation in `excSet`.
@@ -464,6 +464,7 @@ case class Semantics(
         (st2, excSt ⊔ newExcSt)
       }
       case CFGStore(_, block, obj, index, rhs) => {
+
         // locSet must not be empty because obj is coming through <>toObject.
         val (value, _) = V(obj, st)
         val locSet = value.locset

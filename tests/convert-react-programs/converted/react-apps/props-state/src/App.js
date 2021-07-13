@@ -67,7 +67,6 @@ Parent.defaultProps = {
 
 class Cars extends Component {
   render() {
-    console.log(this.props);
     return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h3", null, " I am from cars component"), /*#__PURE__*/React.createElement("p", null, this.props.msg), /*#__PURE__*/React.createElement("p", null, this.props.model), /*#__PURE__*/React.createElement("div", null, this.props.coolCars.map((item, i) => {
       return /*#__PURE__*/React.createElement("p", {
         key: i
