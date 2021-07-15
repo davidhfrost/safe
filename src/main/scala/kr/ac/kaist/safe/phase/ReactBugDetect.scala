@@ -20,6 +20,45 @@ import kr.ac.kaist.safe.LINE_SEP
 import kr.ac.kaist.safe.util._
 import kr.ac.kaist.safe.analyzer.TracePartition
 import kr.ac.kaist.safe.analyzer.model.GLOBAL_LOC
+import kr.ac.kaist.safe.nodes.ast.{ ASTWalker, ClassDeclaration, ClassMethod, FromImportDeclaration, Id, ImportClause, ModuleImportDeclaration, Stmt, VarRef }
+import kr.ac.kaist.safe.nodes.ir.IRRoot
+
+object SetStateBugDetect {
+  // walks an AST and maintains a list of `ClassDeclaration` nodes which extend `Component`.
+  private object ReactComponentWalker extends ASTWalker {
+    var reactComponents: List[ClassDeclaration] = List()
+    override def walk(node: Stmt): Stmt = node match {
+      // check if the superclass of a `ClassDeclaration` node is `Component`.
+      case classDecl @ ClassDeclaration(_, _, Some(VarRef(_, id)), _) if id.text == "Component" =>
+        reactComponents = classDecl :: reactComponents
+        super.walk(node)
+
+      case _ => super.walk(node)
+    }
+  }
+
+  private def checkMethod(cfg: CFG, semantics: Semantics, className: String, method: ClassMethod): List[String] = {
+    List(s"className: ${className}, method: ${method.ftn.name.text}")
+  }
+
+  private def checkComponent(cfg: CFG, semantics: Semantics, classDecl: ClassDeclaration): List[String] = {
+    // combine the warnings found for each method declared by the class
+    classDecl.methods.foldLeft(List[String]())((warnings, method) => {
+      warnings ++ checkMethod(cfg, semantics, classDecl.name.text, method)
+    })
+  }
+
+  def runDetector(cfg: CFG, semantics: Semantics): List[String] = {
+    val irRoot = cfg.ir.asInstanceOf[IRRoot]
+    // compute the list of react components declared in the input program
+    ReactComponentWalker.walk(irRoot.inputAST.get)
+    val components = ReactComponentWalker.reactComponents
+
+    components.foldLeft(List[String]())((warnings, classDecl) => {
+      warnings ++ checkComponent(cfg, semantics, classDecl)
+    })
+  }
+}
 
 // ReactBugDetect phase
 case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics), ReactBugDetectConfig, CFG] {
@@ -125,6 +164,9 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
     } else {
       println("No warnings.")
     }
+
+    println("=== set state bug detector output ===")
+    SetStateBugDetect.runDetector(cfg, semantics).foreach(println)
 
     Success(cfg)
   }

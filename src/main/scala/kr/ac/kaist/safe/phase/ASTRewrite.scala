@@ -19,21 +19,21 @@ import kr.ac.kaist.safe.nodes.ast.Program
 import kr.ac.kaist.safe.util._
 
 // ASTRewrite phase
-case object ASTRewrite extends PhaseObj[Program, ASTRewriteConfig, Program] {
+case object ASTRewrite extends PhaseObj[Program, ASTRewriteConfig, (Program, Program)] {
   val name: String = "astRewriter"
   val help: String =
     "Rewrites AST in JavaScript source files (hoister, disambiguator, withRewriter)"
 
   def apply(
-    pgm: Program,
+    inputProgram: Program,
     safeConfig: SafeConfig,
     config: ASTRewriteConfig
-  ): Try[Program] = {
-    val (program, excLog) = rewrite(safeConfig, pgm)
+  ): Try[(Program, Program)] = {
+    val (rewrittenProgram, excLog) = rewrite(safeConfig, inputProgram)
 
     // Report errors.
     if (excLog.hasError && !safeConfig.testMode && !safeConfig.silent) {
-      println(program.relFileName + ":")
+      println(rewrittenProgram.relFileName + ":")
       println(excLog)
     }
 
@@ -41,14 +41,14 @@ case object ASTRewrite extends PhaseObj[Program, ASTRewriteConfig, Program] {
     config.outFile match {
       case Some(out) => {
         val ((fw, writer)) = Useful.fileNameToWriters(out)
-        writer.write(program.toString(0))
+        writer.write(rewrittenProgram.toString(0))
         writer.close; fw.close
         println("Dumped rewritten AST to " + out)
       }
-      case None => return Try(program)
+      case None => return Try((inputProgram, rewrittenProgram))
     }
 
-    Success(program)
+    Success((inputProgram, rewrittenProgram))
   }
 
   def rewrite(safeConfig: SafeConfig, pgm: Program): (Program, ExcLog) = {

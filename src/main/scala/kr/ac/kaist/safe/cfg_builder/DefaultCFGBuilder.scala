@@ -79,7 +79,7 @@ class DefaultCFGBuilder(
     cfgIdMap = Map()
     uniqueNameCounter = 0
     ir match {
-      case IRRoot(_, fds, vds, _) =>
+      case IRRoot(_, fds, vds, _, _) =>
         val globalVars: List[CFGId] = namesOfFunDecls(fds) ++ namesOfVars(vds)
         val cfg = new CFG(ir, globalVars, config.initFIdCount, config.initUserAsiteSize)
         currentFunc = cfg.globalFunc
@@ -90,7 +90,7 @@ class DefaultCFGBuilder(
 
   /* root rule : IRRoot -> CFG  */
   def build: Unit = ir match {
-    case IRRoot(_, fds, _, stmts) =>
+    case IRRoot(_, fds, _, stmts, _) =>
       val globalFunc = cfg.globalFunc
       val globalVars = globalFunc.localVars
       val startBlock: NormalBlock = globalFunc.createBlock(None)

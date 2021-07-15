@@ -29,7 +29,7 @@ trait IRGeneralWalker[Result] {
   def walk(ast: ASTNode): Result = join()
 
   def walk(node: IRRoot): Result = node match {
-    case IRRoot(ast, fds, vds, irs) =>
+    case IRRoot(ast, fds, vds, irs, _) =>
       join(walk(ast) :: fds.map(walk) ++ vds.map(walk) ++ irs.map(walk): _*)
   }
 

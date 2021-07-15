@@ -50,7 +50,7 @@ class CapturedVariableCollector(
 
     // IRRoot
     override def walk(ir: IRRoot): CapturedNames = ir match {
-      case IRRoot(_, fds, _, stmts) =>
+      case IRRoot(_, fds, _, stmts, _) =>
         walk(fds, walk(_: IRFunDecl)) ++ walk(stmts, walk(_: IRStmt, EMPTY))
     }
 

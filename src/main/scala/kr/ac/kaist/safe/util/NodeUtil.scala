@@ -763,7 +763,7 @@ object NodeUtil {
   // They denote internal IRStmts whose values do not contribute to the result.
   object SimplifyIRWalker extends IRWalker {
     override def walk(node: IRRoot): IRRoot = node match {
-      case IRRoot(ast, fds, vds, irs) =>
+      case IRRoot(ast, fds, vds, irs, _) =>
         IRRoot(ast, fds.map { fd: IRFunDecl => walk(fd) }, vds, simplify(irs))
     }
 

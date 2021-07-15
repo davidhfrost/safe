@@ -13,7 +13,7 @@ package kr.ac.kaist.safe.nodes.ir
 
 trait IRWalker {
   def walk(node: IRRoot): IRRoot = node match {
-    case IRRoot(ast, fds, vds, irs) =>
+    case IRRoot(ast, fds, vds, irs, _) =>
       IRRoot(ast, fds.map(walk), vds.map(walk), irs.map(walk))
   }
 

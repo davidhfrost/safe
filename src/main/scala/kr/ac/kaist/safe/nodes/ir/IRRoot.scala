@@ -20,7 +20,8 @@ case class IRRoot(
     override val ast: ASTNode,
     fds: List[IRFunDecl],
     vds: List[IRVarStmt],
-    irs: List[IRStmt]
+    irs: List[IRStmt],
+    var inputAST: Option[ASTNode] = None
 ) extends IRNode(ast) {
   override def toString(indent: Int): String = {
     NodeUtil.initNodesPrint

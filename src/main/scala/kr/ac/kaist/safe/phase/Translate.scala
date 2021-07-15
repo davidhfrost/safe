@@ -19,19 +19,23 @@ import kr.ac.kaist.safe.nodes.ir.IRRoot
 import kr.ac.kaist.safe.util._
 
 // Translate phase
-case object Translate extends PhaseObj[Program, TranslateConfig, IRRoot] {
+case object Translate extends PhaseObj[(Program, Program), TranslateConfig, IRRoot] {
   val name: String = "translator"
   val help: String = "Translates JavaScript source files to IR."
 
   def apply(
-    program: Program,
+    programs: (Program, Program),
     safeConfig: SafeConfig,
     config: TranslateConfig
   ): Try[IRRoot] = {
     // Translate AST -> IR.
-    val translator = new Translator(program)
+    val (inputProgram, rewrittenProgram) = programs
+    val translator = new Translator(rewrittenProgram)
     val ir = translator.result
     val excLog = translator.excLog
+
+    // keep a record of the original AST in the IR representation
+    ir.inputAST = Some(inputProgram)
 
     // Report errors.
     if (excLog.hasError) {

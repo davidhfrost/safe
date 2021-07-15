@@ -72,7 +72,10 @@ case object CmdParse extends CommandObj("parse", CmdBase >> Parse) {
 
 // astRewrite
 case object CmdASTRewrite extends CommandObj("astRewrite", CmdParse >> ASTRewrite) {
-  override def display(program: Program): Unit = println(program.toString(0))
+  override def display(programs: (Program, Program)): Unit = {
+    val (_, rewrittenProgram) = programs
+    println(rewrittenProgram.toString(0))
+  }
 }
 
 // translate
