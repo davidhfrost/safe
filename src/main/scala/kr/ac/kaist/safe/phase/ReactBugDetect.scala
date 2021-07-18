@@ -20,7 +20,7 @@ import kr.ac.kaist.safe.LINE_SEP
 import kr.ac.kaist.safe.util._
 import kr.ac.kaist.safe.analyzer.TracePartition
 import kr.ac.kaist.safe.analyzer.model.GLOBAL_LOC
-import kr.ac.kaist.safe.nodes.ast.{ ASTWalker, ClassDeclaration, ClassMethod, FromImportDeclaration, Id, ImportClause, ModuleImportDeclaration, Stmt, VarRef }
+import kr.ac.kaist.safe.nodes.ast.{ ASTWalker, ClassDeclaration, ClassMethod, FromImportDeclaration, Functional, Id, ImportClause, ModuleImportDeclaration, Stmt, VarRef }
 import kr.ac.kaist.safe.nodes.ir.IRRoot
 
 object SetStateBugDetect {
@@ -37,8 +37,121 @@ object SetStateBugDetect {
     }
   }
 
+  private trait CFGExprWalker {
+    def walk(expr: CFGExpr): CFGExpr = expr match {
+      case CFGVarRef(ir, id) => CFGVarRef(ir, walk(id))
+      case CFGLoad(ir, obj, index) => CFGLoad(ir, walk(obj), walk(index))
+      case CFGThis(ir) => expr
+      case CFGBin(ir, first, op, second) => CFGBin(ir, walk(first), op, walk(second))
+      case CFGUn(ir, op, expr) => CFGUn(ir, op, walk(expr))
+      case CFGInternalValue(ir, name) => expr
+      case CFGVal(value) => expr
+    }
+
+    def walk(id: CFGId): CFGId = id
+  }
+
+  private case class CFGLoadDetector(
+      onLoad: CFGLoad => Unit
+  ) extends CFGExprWalker {
+    override def walk(expr: CFGExpr): CFGExpr = expr match {
+      case load @ CFGLoad(ir, obj, index) =>
+        onLoad(load)
+        super.walk(expr)
+      case _ => super.walk(expr)
+    }
+  }
+
+  private def simulateNormalBlock(semantics: Semantics, block: NormalBlock, iteratee: (CFGNormalInst, AbsState) => Unit): Unit = {
+    semantics.getState(block).foreach {
+      case (tp, initState) => {
+        val cp = ControlPoint(block, tp)
+        var state = initState
+        var excState = AbsState.Bot
+
+        block.getInsts.reverse.foreach {
+          case inst @ (i: CFGNormalInst) =>
+            val (nextState, nextExcState) = semantics.I(cp, inst, state, excState)
+            state = nextState
+            excState = nextExcState
+
+            iteratee(i, state)
+        }
+      }
+    }
+  }
+
+  private def cfgFunctionFromFunctional(cfg: CFG, ftn: Functional): Option[CFGFunction] =
+    cfg.getUserFuncs.find(_.ir.ast.info.equals(ftn.info))
+
+  private def forEachThisObj(st: AbsState, iteratee: AbsObj => Unit): Unit = {
+    st.context.thisBinding.locset.foreach(loc => iteratee(st.heap.get(loc)))
+  }
+
+  private def getObjProp(obj: AbsObj, key: String): Option[AbsValue] = {
+    obj.nmap.map.get(key) match {
+      case Some(value) => Some(value.value.value) // :)
+      case None => None
+    }
+  }
+
   private def checkMethod(cfg: CFG, semantics: Semantics, className: String, method: ClassMethod): List[String] = {
-    List(s"className: ${className}, method: ${method.ftn.name.text}")
+    var f: Functional = method.ftn
+    println(s"method: ${className}.${method.ftn.name.text}")
+    var calledSetState = false
+    var warnings = List[String]()
+
+    cfgFunctionFromFunctional(cfg, method.ftn) match {
+      case Some(cfgFunction) => {
+        // the blocks of a function are stored in reverse order.
+        cfgFunction.getAllBlocks.reverse.foreach {
+          // before `this.setState` has been called, check each `Call` block to see if
+          // that block calls `this.setState`.
+          case callBlock: Call if !calledSetState => {
+            val inst = callBlock.getInsts.head.asInstanceOf[CFGCallInst]
+            semantics.getState(callBlock).foreach {
+              case (tp, st) =>
+                forEachThisObj(st, thisObj => {
+                  val setStateValue = thisObj.GetProperty("setState", st.heap)._1.value._1
+                  val calleeValue = semantics.V(inst.fun, st)._1
+
+                  if (setStateValue.equals(calleeValue)) {
+                    calledSetState = true
+                  }
+                })
+            }
+          }
+
+          // after `this.setState` has been called, check for reads to `this.state`.
+          // these reads will only occur in `NormalBlock` blocks (as opposed to `Call` blocks).
+          case b: NormalBlock if calledSetState => {
+            simulateNormalBlock(semantics, b, (inst, st) => {
+              forEachThisObj(st, thisObj => {
+                val stateValue = thisObj.GetProperty("state", st.heap)._1.value._1
+                inst match {
+                  case CFGExprStmt(ir, block, lhs, right) =>
+                    val loadDetector = CFGLoadDetector {
+                      case CFGLoad(ir, obj, index) =>
+                        val loadedObjValue = semantics.V(obj, st)._1
+                        if (stateValue.equals(loadedObjValue)) {
+                          val warning = "Usage of `this.state` after `this.setState`: " + ir.ast.info
+                          warnings = warning :: warnings
+                        }
+                    }
+                    loadDetector.walk(right)
+                  case _ => ()
+                }
+              })
+            })
+          }
+
+          case _ => ()
+        }
+      }
+      case None => ()
+    }
+
+    warnings
   }
 
   private def checkComponent(cfg: CFG, semantics: Semantics, classDecl: ClassDeclaration): List[String] = {
