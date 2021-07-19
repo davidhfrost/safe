@@ -20,7 +20,7 @@ import kr.ac.kaist.safe.LINE_SEP
 import kr.ac.kaist.safe.util._
 import kr.ac.kaist.safe.analyzer.TracePartition
 import kr.ac.kaist.safe.analyzer.model.GLOBAL_LOC
-import kr.ac.kaist.safe.nodes.ast.{ ASTWalker, ClassDeclaration, ClassMethod, FromImportDeclaration, Functional, Id, ImportClause, ModuleImportDeclaration, Stmt, VarRef }
+import kr.ac.kaist.safe.nodes.ast.{ ASTNodeInfo, ASTWalker, ClassDeclaration, ClassMethod, FromImportDeclaration, Functional, Id, ImportClause, ModuleImportDeclaration, Stmt, VarRef }
 import kr.ac.kaist.safe.nodes.ir.IRRoot
 
 object SetStateBugDetect {
@@ -247,7 +247,9 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
 
                 objLocs.foreach(objLoc => {
                   if (thisDotStateLocs.contains(objLoc)) {
-                    warnings ++= List("Direct state mutation found: " + obj.ir.ast.info)
+                    val loc = obj.ir.ast.info.span.begin
+                    val locMessage = s"line ${loc.line}, column ${loc.column}"
+                    warnings ++= List(s"Direct state mutation found: $locMessage")
                   }
                 })
 
