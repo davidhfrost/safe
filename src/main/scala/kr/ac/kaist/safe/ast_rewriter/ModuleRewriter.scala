@@ -208,7 +208,7 @@ class ModuleRewriter(basePath: String, program: Program) {
   // then translates the `importClause`.
   def translateImportDecl(info: ASTNodeInfo, importClause: ImportClause, importPath: Option[String]): Stmt = {
     // first, recursively perform an `astRewrite` on the imported file to get its rewritten AST.
-    val result = importPath.map(path => CmdASTRewrite(List("-silent", path), false)).asInstanceOf[Option[Try[Program]]]
+    val result = importPath.map(path => CmdASTRewrite(List("-silent", path), false)).asInstanceOf[Option[Try[(Program, Program)]]]
     result match {
       // importing an unmodeled file.
       // the translation of the import statement should only declare the imported variables,
@@ -220,7 +220,7 @@ class ModuleRewriter(basePath: String, program: Program) {
         println(s"Failure translating imported file: ${importPath}")
         EmptyStmt(info)
 
-      case Some(Success(Program(info, topLevel))) =>
+      case Some(Success((_, Program(info, topLevel)))) =>
         // generate two statements which include the imported file's code into the main file:
         // stmt 0: `function ___fileFn[i]___() { [...imported file code...] }`
         // stmt 1: `___imports[i]___ = ___fileFn[i]___()`
