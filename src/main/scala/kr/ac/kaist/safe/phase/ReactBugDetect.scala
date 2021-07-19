@@ -96,8 +96,6 @@ object SetStateBugDetect {
   }
 
   private def checkMethod(cfg: CFG, semantics: Semantics, className: String, method: ClassMethod): List[String] = {
-    var f: Functional = method.ftn
-    println(s"method: ${className}.${method.ftn.name.text}")
     var calledSetState = false
     var warnings = List[String]()
 
@@ -249,7 +247,7 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
 
                 objLocs.foreach(objLoc => {
                   if (thisDotStateLocs.contains(objLoc)) {
-                    warnings ++= List("found bug at: " + obj.ir.ast.info)
+                    warnings ++= List("Direct state mutation found: " + obj.ir.ast.info)
                   }
                 })
 
@@ -278,7 +276,6 @@ case object ReactBugDetect extends PhaseObj[(CFG, Int, TracePartition, Semantics
       println("No warnings.")
     }
 
-    println("=== set state bug detector output ===")
     SetStateBugDetect.runDetector(cfg, semantics).foreach(println)
 
     Success(cfg)
