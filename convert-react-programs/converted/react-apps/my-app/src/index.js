@@ -3,17 +3,21 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
 
-function Square(props) {
-  return /*#__PURE__*/React.createElement("button", {
-    className: "square",
-    onClick: props.onClick
-  }, props.value);
-}
-
 class Board extends React.Component {
+  constructor() {
+    this.state = {};
+  }
+
+
+
+
+
   renderSquare(i) {
-    return /*#__PURE__*/React.createElement(Square, {
-      value: this.props.squares[i],
+    var stateRef = this.state;
+    stateRef.variable = 3;
+
+    return /*#__PURE__*/React.createElement("div", {
+      value: null,
       onClick: () => this.props.onClick(i)
     });
   }
@@ -29,6 +33,9 @@ class Board extends React.Component {
   }
 
 }
+
+var b = new Board();
+b.renderSquare(3)
 
 class Game extends React.Component {
   constructor(props) {
@@ -103,7 +110,6 @@ class Game extends React.Component {
 } // ========================================
 
 
-ReactDOM.render( /*#__PURE__*/React.createElement(Game, null), document.getElementById("root"));
 
 function calculateWinner(squares) {
   const lines = [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [2, 4, 6]];
